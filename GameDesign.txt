@@ -1,0 +1,120 @@
+Theme:
+Chain Reaction
+
+modifier/limiter/additional challenge:
+restricted to kenney assets
+
+chain of events
+tree diagram
+dominoes
+sea mines
+rube-goldberg-machine
+    A Rube Goldberg machine, named after American cartoonist Rube Goldberg, is a chain reaction–type machine or contraption intentionally designed to perform a simple task in a comically overcomplicated way. 
+
+idea: plan a RGM, then take it apart and make the player put it back together?
+
+take it literally: make a chain react to something? maybe it's elemental? like a chain of fireballs reaction to water?
+
+idea: chain -> blockchain? have a blockchain react? kind of educational? serious game?
+
+Chain reaction (1996): use movie story as gameplay basis? replay story?
+    in short: fusion reaction is found, but private sector wants it, scientists are framed, need to run
+
+questions:
+Is the chain reaction wanted/intended/the goal? what the end result?
+is the reaction identical (like bombs in a row, domnioes, things catching fire)?
+is the chain an actual chain?
+re-action -> what is the action/trigger?
+is the trigger automatically, time based, event based, by the player?
+is the chain reaction physical, like things falling over using 2D physics?
+or more like automated system of e.g. robots running a code?
+are consequences foreseeable or not? or is it more try and error?
+-> consequences should only vaguely foreseeable, creating suspense
+-> failure should be no frustrating
+-> encourage experimentation (best done through aesthetics)
+"mess around and find out"?
+
+genre/style:
+2D to make my life easy :)
+
+kenney packs of interest:
+letter-tiles: chain of words -> whats the reaction?
+generic-items: excellent fit for RGM
+top-down-shoot: for scenery?
+top-down tower defense?
+playing cards -> maybe get a random set of cards, dice rolls and build sopmething with it? -> Balatro style?
+input prompt pixel 16x -> perform a series of actions quickly and correctly to keep a chain reaction going until it's end?
+Rune pack -> every rune has an effect, which influences the following runes, player has to experiment to find the right "chain of events"?
+-> like rune A summons beast, rune B makes it attack, rune C set it on fire...?
+-> every rune = one event -> events build on top of each other...?
+---> not really what a chain reaction is though... unless hearthsone style: set up a chain of reactions to each other...
+-> maybe add location based effects....? like rune A shoots at rune B, rune C mingles etc.
+
+Google eyes for funsies
+
+thought:
+the chain reaction might be "recursive" in a way?
+iterate the chain reaction multiple times and every time it "increases" in effect some way?
+
+limitations copied from kenney jam:
+1. Single pack: Your game should only use a single asset pack -> no
+2. No text: Create a game that doesn't use any text at all -> TBD
+3. Mouse only: Your game should be fully controlled using only the mouse -> TBD
+4. Co-op: Your game should feature co-op gameplay -> no
+5. Symmetry: Your game should heavily feature symmetrical elements in visuals, mechanics or both-> TBD
+6. Cross Dimensional: Use 2D sprites in a 3D world -> no
+
+Idea run-through:
+Rune Magic
+
+Every rune has an effect and reacts to other runes effects (like triggered by fire, causes ice etc.)
+note: 3 colors for each rune
+total of runes: 35 (* 3 colors = 105) +  colors, Particle Pack effects, different backgrounds...
+RGM with rune magic (kind of)?
+idea: the magic channeled through each rune is amplified and modified by the rune, potentially escalating in the wrong direction...?
+-> watching the chain reaction should be interesting, outcome should be only somewhat unpredictable
+
+Important: outcome should not be obvious all the time, but player should be able to have an idea of how things will go
+inspiration: hearthstone special game mode where player had only one move and had to fulfill a task by setting of the correct chain reaction
+
+question:
+does the player set ALL the runes or just one? or partial?
+
+Idea: you could play two or more runes which trigger chain reactions that meet later on?
+
+chat suggestion: tutorial where slots to play are added gradually?
+
+note: difficulty is in the complexity
+
+thought: (aesthetics) you are a support mage in a battle and need to help your allies with your rune magic
+-> have something going on while chain of events is happening, creating the needed suspense
+-> could also be that the user has to choose a rune while events are happening and user has to act on the spot?
+(not easy with 35 options!)
+
+RGM with Rune magic:
+using runes to achieve an effect is totally unnecessarily complicated
+-> idea: buffing an axe fighter is not just a fire rune, it's body+fire+water+something;
+just using a fire rune sets them on fire
+-> player has to come up with sequence of rune to achieve correct effect, otherwhise chaos happens
+
+idea:
+there are multiple options for the next step in the chain, and the player has to find the correct order of steps + the correct runes to use at each step?
+
+player choices: steps to take, runes to use
+-> wrong steps / runes have unwanted effect
+-> kind of predictable, but not quite
+-> comes down to: object + rune = maybe known effect
+-> goal is to figure out which runes have which effect and what reaction they then trigger
+
+MVP:
+one RGM with runes
+-> not every level has every rune
+-> could also add conditional chains, like heated objects meeting an additional rune, or living things, etc
+QUESTION:
+is it one object undergoing a series of events?
+one rune = one new effect? how to predict?
+-> attach an effect to object
+-> each object in the RGM is connected with a rune that activates when triggered, effect may be more or less predictable
+
+project tile: "The Rune Goldberg Machine"
+chat suggestion: Rune Generated Magic
