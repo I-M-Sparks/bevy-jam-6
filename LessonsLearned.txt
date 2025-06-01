@@ -61,3 +61,33 @@ Sprite size
 
 accessing the actual size of asprite is a bit tricky; it's necessary to get the image size through the Image-Assets-Ressource, and multiply it with the transform scale
 this is only valid if custom_size isn't used
+
+========================================================================
+
+Game Freeze
+
+after removing the 'Picked' Component from the only Sprite in the scene, the game froze
+setup was still completed, but it didn't run the controls-system once; suggests to me it freezes because of the query
+-> must be one of the two Queries for Pickables/Picked
+
+approach: add second Pickable to the scene an see what happens; first one keep the 'Picked' component for now
+result: game freezes without ever running control system -> suggests the Query for Pickables is the problem
+WRONG: I added the 'Picked' component to the second rune by accident... but then why did the game freeze...?
+
+approach: correctly this time: first Rune gets Picked-comp, second one doesn't
+result: game runs as expected
+
+approach: remove Picked-Comp from first rune
+result: setup completes, scene is rendered, but controls system fails entirely
+solution from description of Single-struct:
+
+"This SystemParam fails validation if zero or more than one matching entity exists.
+This will cause the system to be skipped, according to the rules laid out in SystemParamValidationError."
+-> explains why this doesn't run at all with 0 or 2 Picked entities :D
+>> need to use: Option<Single<...>>
+
+=====
+
+Follow up question: how to actually use / unwrap/ access the Option<Single<..>>?
+Answer: 
+
