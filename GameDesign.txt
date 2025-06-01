@@ -124,3 +124,49 @@ Idea: player is given a combination of runes and items and must combine them to 
 -> there might always be more than one way to solve a puzzle, which is fine
 
 IDEA: the trigger & the effect might be separate; i.e. when black Rune A ist set on fire, white rune B start doing something; grey rune A is both trigger & effect source
+
+=========================
+
+-Game design questions:
+--does the player know what the runes do / is it explained? if yes: how?
+--> decision: no, player must figure out what the runes do by experimentation
+--what exactly do the runes do?
+-> good question :D
+Thoughts:
+--> move things around (left, right, up, down)
+--> lock/unlock physics (like gravitation)
+--> invert physics (shift gravitation)
+--> 
+
+--does the player trigger the chain, or does it trigger automatically? does it trigger once, or repeatedly? Does the player have unlimited attempts?
+--> idea: the player triggers the chain by using a marble
+--> player receives up to X "test marbles" to let the machine run and see if it works (let's say the grey one)
+--> once they put in the 'blue marble', it's all or nothing
+---> if they succeed without using all of their test marbles, they get bonus points?
+
+Idea 1:
+-machine runs every X seconds
+-players needs to observe & adjust between runs
+-player has only Y attempts to solve the machine aka achieve effect
+
+Idea 2:
+-physics puzzle (fake physics, unless people have put in the wrong rune -> let it go wild!)
+-- makes actual 2D physics optional
+-player can shift/activate/deactivate gravitation, create impulses on target object, teleport, open a portal... make it immune to destruction
+--other effects are possible too
+--> with 35 runes, plenty of effects possible
+-to make it more interesting: have multiple moving parts at once, each triggering new effects
+--> multiple chain reactions running in parallel
+
++++
+Conclusion Game Design:
+-Pseudo-physics puzzle (not actual physics)
+-Player has to set up 1 or more chain reactions running in parallel
+-they have X attempts to see how things work out
+-they can choose to to the final attempt early for bonus points (as optional challenge)
+-runes are placed to cause the "magic physics" (no gravitation, double gravitation, teleport, shifted gravitation, impulse to move...?, ...)
+
+Challenge is: figure out the correct sequence of events with the given runes available
+
+QUESTION: limited time? -> rather not, could be too punishing, espcially without the chance to balance the difficulty -> limited attempts is hard enough
++++

@@ -33,6 +33,14 @@ First steps:
 -figure out how to place sprite in specific position - DONE
 -figure out how to change window size - CANCELLED; Window size is 1280 x 720, which is fine
 -figure out how to render multiple assets - DONE
++++
+next step: Prototype
+-build for WASM/web (check playability)
+-implement one rune magic effect (move in zero gravity single direction)
+-implement start of chain reaction (including test attempts / final attempt logic)
+-implement one follow up effect based on placed rune (triggered by the end of the previous effect)
+--figure out how to detect "collision"
+-enable/disable player input before-and-after/during chain reaction
+-figure out how to track when a machine has reached it's conclusion (both success and failure)
 
--figure out how to detect collision
--
+goal: enable player to set up a single chain reaction with at least two components and play on web, with a detected failure/success
