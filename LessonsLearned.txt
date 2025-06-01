@@ -27,5 +27,37 @@ new task: how to only log trace/debug from my game, not the engine
         }))
 +++
 
-++++++++++++++++
+========================================================================
 getting mouse position at time of button press made more suspense
+-> cursor_evr: EventReader<CursorMoved>, removed
+
+the example I found wasn't quite up to date
+A "Result" was returned, wrapping an option
+-> need to unwrap the result with .ok(), and then the Option with .unwrap()
+>> not checking for errors here for brevity's sake; I'll just assume it works
+
+========================================================================
+Sprites and transforms
+
+Sprites by default anchor at the center (says so in Sprite.rs of engine)
+it requires a transform -> what does that mean again...?
+-> intuitive way to use this would be to give an entity a transform and manipulate that
+>> raises the question how exactly a sprite-offset from it's parent would look like, but not relevant in my case (maybe child entity with it's own transform?)
+
+========================================================================
+Queries
+
+conflicting queries cause the app to panic
+in my case, querying all Pickables and the Signle Picked entity in the same system caused a crash
+solution: added "Without<Picked" to the Query that queries all Pickables:
+pickables: Query<(&mut Transform, &Sprite), (With<Pickable>, Without<Picked>)>,
+    picked: Single<&mut Transform, With<Picked>>,
+
+note that the With<..> and Without<..> are part of a tuple, not a 3rd argument to the query (Query only accepts two arguments)
+
+========================================================================
+
+Sprite size
+
+accessing the actual size of asprite is a bit tricky; it's necessary to get the image size through the Image-Assets-Ressource, and multiply it with the transform scale
+this is only valid if custom_size isn't used
