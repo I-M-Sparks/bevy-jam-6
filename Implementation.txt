@@ -26,4 +26,9 @@ Kenney-packs that fit "Rune Goldberg Machine" (potentially):
 First steps:
 -create window - DONE
 -Render runes - DONE
+-implement click & release - DONE
 -implement drag & drop
+-figure out how to place sprite in specific position
+-figure out how to change window size - CANCELLED; Window size is 1280 x 720, which is fine
+-figure out how to render multiple assets
+-figure out how to detect collision

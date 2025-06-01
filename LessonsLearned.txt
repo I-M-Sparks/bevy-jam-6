@@ -1,0 +1,31 @@
+Logging:
+The default logging Plugin, as part of the DefaultPlugin, uses a runtime filter
+the default runtime filter uses log level INFO
+The compile time filter does NOT override this
+>> debug & trace logs did not show up even though the compile time filter was set to trace
+
+solution:
+-had to add "use bevy::log::*;" because LogPlugin was not part of prelude
+-added the follwoing to App setup:
+App::new()
++++
+    .add_plugins(DefaultPlugins
+        .set(LogPlugin {
+            level: Level::TRACE,
+            ..Default::default()
+        }))
++++
+>> now all debug & trace logs showed, including logs from the engine
+
+new task: how to only log trace/debug from my game, not the engine
+>> added a filter for everything that isn't my application to level error:
++++
+.set(LogPlugin {
+            filter: "error,bevy_jam_6=trace".to_string(),
+            level: Level::TRACE,
+            ..Default::default()
+        }))
++++
+
+++++++++++++++++
+getting mouse position at time of button press made more suspense
