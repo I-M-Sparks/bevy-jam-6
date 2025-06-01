@@ -15,7 +15,6 @@ Kenney-packs that fit "Rune Goldberg Machine" (potentially):
 -Roling Ball Assets
 -Foliage sprites
 -Emotes pack
--Planets
 -Splat Pack
 -Rune Pack
 -Shape Characters

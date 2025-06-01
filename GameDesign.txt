@@ -170,3 +170,18 @@ Challenge is: figure out the correct sequence of events with the given runes ava
 
 QUESTION: limited time? -> rather not, could be too punishing, espcially without the chance to balance the difficulty -> limited attempts is hard enough
 +++
+Visual Design:
+Player needs to create a series of effects to make donuts
+
+The goal donut is displayed
+
+if the chain reaction goes wrong or happens at the wrong time, the wrong donut is made and the world ends.
+for example: rotatin ring of sprinkles, and the sprinkeling must happen at the correct time, triggered by the chain reaction
+
+Must have visual packs:
+-Donuts
+-Emote Pack
+
++++
+Idea from the Board game pack: the trigger for a next event could be completing a series of cards
+alternatively: complete a word
