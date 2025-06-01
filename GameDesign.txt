@@ -118,3 +118,9 @@ one rune = one new effect? how to predict?
 
 project tile: "The Rune Goldberg Machine"
 chat suggestion: Rune Generated Magic
+
+Idea: player is given a combination of runes and items and must combine them to achieve a simple task; this should never be straightforward
+-> requires some creative problem solving by the player
+-> there might always be more than one way to solve a puzzle, which is fine
+
+IDEA: the trigger & the effect might be separate; i.e. when black Rune A ist set on fire, white rune B start doing something; grey rune A is both trigger & effect source

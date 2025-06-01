@@ -1,0 +1,29 @@
+Kenney-packs that fit "Rune Goldberg Machine" (potentially):
+-Particle Pack
+-Smoke Particles
+-Physics assets
+-Platformer Art Requests
+-Puzzle Pack
+-Pixel UI Pack
+-Puzzle Pack 2
+-Animal Pack
+-Letter tiles
+-Generic items
+-Ranks Pack
+-Crosshair Pack
+-Simplified Platformer
+-Roling Ball Assets
+-Foliage sprites
+-Emotes pack
+-Planets
+-Splat Pack
+-Rune Pack
+-Shape Characters
+-Cursor Pack
+-Googly eyes
+-Board game Icons
+
+First steps:
+-create window - DONE
+-Render runes - DONE
+-implement drag & drop
