@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use bevy::log::*;
 use bevy::prelude::*;
 
@@ -46,6 +48,10 @@ means a scene that shows all basic gameplay elements which is loaded by default 
 after finishing the MVP scene I can consider doing more than one scene
 */
 fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // spawn player entity
+    commands.spawn((Player, PlayerCanPick));
+
+    // spawn camera
     commands.spawn(Camera2d);
 
     //spawn a rune
@@ -54,7 +60,7 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
         Pickable,
         //FOR DEBUGGING
         //Picked,
-        Transform::from_xyz(100.0, 100.0, RUNE_RENDER_LAYER),
+        Transform::from_xyz(-600.0, -300.0, RUNE_RENDER_LAYER),
         Sprite::from_image(asset_server.load("runes/PNG/Grey/Slab/runeGrey_slab_001.png")),
     ));
 
@@ -62,7 +68,7 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Rune,
         Pickable,
-        Transform::from_xyz(-100.0, -100.0, RUNE_RENDER_LAYER),
+        Transform::from_xyz(-540.0, -100.0, RUNE_RENDER_LAYER),
         Sprite::from_image(asset_server.load("runes/PNG/Grey/Slab/runeGrey_slab_002.png")),
     ));
 
@@ -84,11 +90,6 @@ fn move_picked_object(
     let mut transform = picked.into_inner();
 
     for event in cursor_evr.read() {
-        trace!(
-            "new cursor position: x: {}, y: {}",
-            event.position.x, event.position.y
-        );
-
         let (camera, camera_transform) = camera_q.single().ok().unwrap();
         let cursor_position_in_world_coord = camera
             .viewport_to_world_2d(
@@ -100,6 +101,11 @@ fn move_picked_object(
 
         transform.translation.x = cursor_position_in_world_coord.x;
         transform.translation.y = cursor_position_in_world_coord.y;
+
+        trace!(
+            "new Pickable position: x: {}, y: {}",
+            transform.translation.x, transform.translation.y
+        );
     }
 }
 
@@ -112,52 +118,59 @@ fn handle_pick_event(
     images: Res<Assets<Image>>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
     pickables: Query<(Entity, &mut Transform, &Sprite), (With<Pickable>, Without<Picked>)>,
+    player_single: Single<Entity, (With<PlayerCanPick>, With<PlayerAttemptsPick>)>,
 ) {
-    trace!("Pick event");
+    trace!("Pick event processing");
+    let player_entity = player_single.into_inner();
+
+    commands
+        .entity(player_entity)
+        .remove::<PlayerAttemptsPick>();
 
     let (camera, camera_transform) = camera_q.single().ok().unwrap();
 
+    // in world coordinates
+    let mut event_location_in_world: Vec2 = Vec2::new(0.0, 0.0);
+
+    //read event
     for pick_event in pick_event_reader.read() {
-        if let Some(cursor_world_position) = camera
+        event_location_in_world = camera
             .viewport_to_world_2d(camera_transform, pick_event.location_in_screen_coordinates)
             .ok()
+            .unwrap();
+    }
+
+    //react to click if inside Pickable Sprite
+    for (entity, transform, sprite) in pickables {
+        /*
+        IF mouse click is inside pickable
+        THEN add Picked-component to that entity AND interrupt loop
+        ELSE do nothing
+
+        note: bevy probably has a more elegant way to do this but I didn't find it immediately and won't waste Jam-time searching for it
+        note note: it seems bevy currently has no elegant way to find the actual sprite size, so I need to use this monstrosity
+         */
+        let sprite_size = if let Some(custom_size) = sprite.custom_size {
+            custom_size
+        } else if let Some(image) = images.get(sprite.image.id()) {
+            image.size_f32()
+        } else {
+            Vec2::new(1.0, 1.0)
+        };
+
+        let sprite_size = sprite_size * transform.scale.truncate();
+        trace!("sprite size {:?}", sprite_size);
+
+        // note: this is assuming the Sprite-Anchor is CENTER
+        if event_location_in_world.x > transform.translation.x - sprite_size.x * 0.5
+            && event_location_in_world.x < transform.translation.x + sprite_size.x * 0.5
+            && event_location_in_world.y > transform.translation.y - sprite_size.y * 0.5
+            && event_location_in_world.y < transform.translation.y + sprite_size.y * 0.5
         {
-            trace!(
-                "Clicked at: {}/{}",
-                cursor_world_position.x, cursor_world_position.y
-            );
+            commands.entity(entity).insert(Picked);
 
-            //react to click if inside Pickable Sprite
-            for (entity, transform, sprite) in pickables {
-                /*
-                IF mouse click is inside pickable
-                THEN add Picked-component to that entity AND interrupt loop
-                ELSE do nothing
-
-                note: bevy probably has a more elegant way to do this but I didn't find it immediately and won't waste Jam-time searching for it
-                note note: it seems bevy currently has no elegant way to find the actual sprite size, so I need to use this monstrosity
-                 */
-                let sprite_size = if let Some(custom_size) = sprite.custom_size {
-                    custom_size
-                } else if let Some(image) = images.get(sprite.image.id()) {
-                    image.size_f32()
-                } else {
-                    Vec2::new(1.0, 1.0)
-                };
-
-                let sprite_size = sprite_size * transform.scale.truncate();
-                trace!("sprite size {:?}", sprite_size);
-
-                // note: this is assuming the Sprite-Anchor is CENTER
-                if cursor_world_position.x > transform.translation.x - sprite_size.x * 0.5
-                    && cursor_world_position.x < transform.translation.x + sprite_size.x * 0.5
-                    && cursor_world_position.y > transform.translation.y - sprite_size.y * 0.5
-                    && cursor_world_position.y < transform.translation.y + sprite_size.y * 0.5
-                {
-                    commands.entity(entity).insert(Picked);
-                    break;
-                }
-            }
+            commands.entity(player_entity).remove::<PlayerCanPick>();
+            break;
         }
     }
 }
@@ -170,30 +183,46 @@ Release event is ignored if no Picked object was found
 fn handle_release_event(
     mut commands: Commands,
     mut release_event_reader: EventReader<ReleaseEvent>,
-    picked: Single<(Entity, &mut Transform), With<Picked>>,
+    player_single: Single<Entity, (With<Player>, With<PlayerAttemptsRelease>)>,
+    picked: Option<Single<(Entity, &mut Transform), With<Picked>>>,
 ) {
     trace!("Release event processing");
 
-    let (entity, transform) = picked.into_inner();
+    let player_entity = player_single.into_inner();
 
-    // "drop" the Pickable by removing the Picked-component
-    commands.entity(entity).remove::<Picked>();
+    commands
+        .entity(player_entity)
+        .remove::<PlayerAttemptsRelease>();
 
-    //assumption: whatever object was picked has been moved to wherever the cursor had been
-    //-> the objects transform is ready for further usage
+    // add PlayerCanPick marker to player
+    commands.entity(player_entity).insert(PlayerCanPick);
 
-    // TODO check for overlap between picked entity and potential slot -> how to best do this?
-    // read screen-position from event
-    // translate to world position
-    // check for overlap with all 'slot' entities
+    if let Some(picked_single) = picked {
+        let (picked_entity, transform) = picked_single.into_inner();
+
+        // "drop" the Pickable by removing the Picked-component
+        commands.entity(picked_entity).remove::<Picked>();
+
+        //assumption: whatever object was picked has been moved to wherever the cursor had been
+        //-> the objects transform is ready for further usage
+
+        // TODO check for overlap between picked entity and potential slot -> how to best do this?
+        // read screen-position from event
+        // translate to world position
+        // check for overlap with all 'slot' entities
+    }
 }
 
 fn controls(
+    mut commands: Commands,
     input: Res<ButtonInput<MouseButton>>,
     mut release_event_writer: EventWriter<ReleaseEvent>,
     mut pick_event_writer: EventWriter<PickEvent>,
     windows: Query<&Window>,
+    player_single: Single<Entity, With<Player>>,
 ) {
+    let player_entity = player_single.into_inner();
+
     // Press Left Mouse
     if input.just_pressed(MouseButton::Left) {
         trace!("Left pressed");
@@ -203,17 +232,19 @@ fn controls(
         pick_event_writer.write(PickEvent {
             location_in_screen_coordinates: window.cursor_position().unwrap(),
         });
+        commands.entity(player_entity).insert(PlayerAttemptsPick);
     }
 
     // Release Left Mouse
     if input.just_released(MouseButton::Left) {
-        trace!("Release Event triggered");
+        trace!("Left released");
 
         let window = windows.single().ok().unwrap();
 
         release_event_writer.write(ReleaseEvent {
             location_in_screen_coordinates: window.cursor_position().unwrap(),
         });
+        commands.entity(player_entity).insert(PlayerAttemptsRelease);
     }
 
     /*
@@ -237,14 +268,48 @@ Components
 ========================================================================================
  */
 
+/*
+ */
 #[derive(Component)]
 struct Rune;
 
+/*
+marks an object as 'Pickable', meaning the player can pick it and drag it around
+*/
 #[derive(Component)]
 struct Pickable;
 
+/*
+marks a an object as 'Picked', meaning the player is dragging it
+*/
 #[derive(Component)]
 struct Picked;
+
+/*
+marks the player entity
+the player entity holds marker components for game logic
+ */
+#[derive(Component)]
+struct Player;
+
+/*
+should be added to player Component when a Picked entity is released
+is used to make sure Pick-Events are only handled while the player holds this tag
+ */
+#[derive(Component)]
+struct PlayerCanPick;
+
+/*
+marks that the player is attempting a pick
+ */
+#[derive(Component)]
+struct PlayerAttemptsPick;
+
+/*
+marks that the player is attempting a release
+ */
+#[derive(Component)]
+struct PlayerAttemptsRelease;
 
 /*
 ========================================================================================
