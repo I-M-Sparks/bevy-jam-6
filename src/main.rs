@@ -9,7 +9,13 @@ fn main() {
             ..Default::default()
         }))
         .add_systems(Startup, setup_mvp_scene)
+        .add_systems(
+            Update,
+            (move_picked_object, handle_pick_event, handle_release_event),
+        )
         .add_systems(FixedUpdate, controls)
+        .add_event::<PickEvent>()
+        .add_event::<ReleaseEvent>()
         .run();
 
     //TODO Pre game start load all spritesheets
@@ -67,32 +73,62 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     info!("Setup completed");
 }
 
-fn controls(
-    input: Res<ButtonInput<MouseButton>>,
-    windows: Query<&Window>,
+/*
+Queries the currently moved object and moves it to the cursor position
+ */
+fn move_picked_object(
+    picked: Single<&mut Transform, With<Picked>>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
-    pickables: Query<(&mut Transform, &Sprite, Entity), (With<Pickable>, Without<Picked>)>,
-    picked: Option<Single<(&mut Transform, Entity), With<Picked>>>,
     mut cursor_evr: EventReader<CursorMoved>,
-    images: Res<Assets<Image>>,
-    mut commands: Commands,
 ) {
-    if input.just_pressed(MouseButton::Left) && picked.is_none() {
-        trace!("Left pressed");
+    let mut transform = picked.into_inner();
 
-        let window = windows.single().ok().unwrap();
+    for event in cursor_evr.read() {
+        trace!(
+            "new cursor position: x: {}, y: {}",
+            event.position.x, event.position.y
+        );
+
         let (camera, camera_transform) = camera_q.single().ok().unwrap();
+        let cursor_position_in_world_coord = camera
+            .viewport_to_world_2d(
+                camera_transform,
+                Vec2::new(event.position.x, event.position.y),
+            )
+            .ok()
+            .unwrap();
 
-        if let Some(cursor_world_position) = window
-            .cursor_position()
-            .and_then(|cursor| camera.viewport_to_world_2d(camera_transform, cursor).ok())
+        transform.translation.x = cursor_position_in_world_coord.x;
+        transform.translation.y = cursor_position_in_world_coord.y;
+    }
+}
+
+/*
+Handles whichever action caused a Pick-Event
+ */
+fn handle_pick_event(
+    mut pick_event_reader: EventReader<PickEvent>,
+    mut commands: Commands,
+    images: Res<Assets<Image>>,
+    camera_q: Query<(&Camera, &GlobalTransform)>,
+    pickables: Query<(Entity, &mut Transform, &Sprite), (With<Pickable>, Without<Picked>)>,
+) {
+    trace!("Pick event");
+
+    let (camera, camera_transform) = camera_q.single().ok().unwrap();
+
+    for pick_event in pick_event_reader.read() {
+        if let Some(cursor_world_position) = camera
+            .viewport_to_world_2d(camera_transform, pick_event.location_in_screen_coordinates)
+            .ok()
         {
             trace!(
                 "Clicked at: {}/{}",
                 cursor_world_position.x, cursor_world_position.y
             );
+
             //react to click if inside Pickable Sprite
-            for (transform, sprite, entity) in pickables {
+            for (entity, transform, sprite) in pickables {
                 /*
                 IF mouse click is inside pickable
                 THEN add Picked-component to that entity AND interrupt loop
@@ -124,54 +160,75 @@ fn controls(
             }
         }
     }
+}
+
+/*
+Handles the release of whichever Action caused a previous pick event
+
+Release event is ignored if no Picked object was found
+ */
+fn handle_release_event(
+    mut commands: Commands,
+    mut release_event_reader: EventReader<ReleaseEvent>,
+    picked: Single<(Entity, &mut Transform), With<Picked>>,
+) {
+    trace!("Release event processing");
+
+    let (entity, transform) = picked.into_inner();
+
+    // "drop" the Pickable by removing the Picked-component
+    commands.entity(entity).remove::<Picked>();
+
+    //assumption: whatever object was picked has been moved to wherever the cursor had been
+    //-> the objects transform is ready for further usage
+
+    // TODO check for overlap between picked entity and potential slot -> how to best do this?
+    // read screen-position from event
+    // translate to world position
+    // check for overlap with all 'slot' entities
+}
+
+fn controls(
+    input: Res<ButtonInput<MouseButton>>,
+    mut release_event_writer: EventWriter<ReleaseEvent>,
+    mut pick_event_writer: EventWriter<PickEvent>,
+    windows: Query<&Window>,
+) {
+    // Press Left Mouse
+    if input.just_pressed(MouseButton::Left) {
+        trace!("Left pressed");
+
+        let window = windows.single().ok().unwrap();
+
+        pick_event_writer.write(PickEvent {
+            location_in_screen_coordinates: window.cursor_position().unwrap(),
+        });
+    }
+
+    // Release Left Mouse
+    if input.just_released(MouseButton::Left) {
+        trace!("Release Event triggered");
+
+        let window = windows.single().ok().unwrap();
+
+        release_event_writer.write(ReleaseEvent {
+            location_in_screen_coordinates: window.cursor_position().unwrap(),
+        });
+    }
+
     /*
+    // Press Right Mouse
        if input.just_pressed(MouseButton::Right) {
            debug!("Right release")
        }
     */
 
     /*
+    // Press Left Mouse
      if input.just_released(MouseButton::Right) {
          trace!("Right release")
      }
-
     */
-
-    /*
-    Turns out I need this after all :D
-
-    I query for a single entity with the "Picked" Component (there should only ever be one) and set it's transform to the cursor position in world coordinates
-     */
-    if picked.is_some() {
-        let picked_single = picked.unwrap();
-        let (mut transform, entity) = picked_single.into_inner();
-
-        if input.just_released(MouseButton::Left) {
-            trace!("Release Picked entity");
-
-            // drop the Pickable
-            commands.entity(entity).remove::<Picked>();
-        } else {
-            for event in cursor_evr.read() {
-                trace!(
-                    "new cursor position: x: {}, y: {}",
-                    event.position.x, event.position.y
-                );
-
-                let (camera, camera_transform) = camera_q.single().ok().unwrap();
-                let cursor_position_in_world_coord = camera
-                    .viewport_to_world_2d(
-                        camera_transform,
-                        Vec2::new(event.position.x, event.position.y),
-                    )
-                    .ok()
-                    .unwrap();
-
-                transform.translation.x = cursor_position_in_world_coord.x;
-                transform.translation.y = cursor_position_in_world_coord.y;
-            }
-        }
-    }
 }
 
 /*
@@ -188,3 +245,27 @@ struct Pickable;
 
 #[derive(Component)]
 struct Picked;
+
+/*
+========================================================================================
+Events
+========================================================================================
+ */
+
+#[derive(Event)]
+struct PickEvent {
+    // screen coordinates means (0,0) to (window_width, window_height); from top-left to bottom-right
+    location_in_screen_coordinates: Vec2,
+}
+
+#[derive(Event)]
+struct ReleaseEvent {
+    // screen coordinates means (0,0) to (window_width, window_height); from top-left to bottom-right
+    location_in_screen_coordinates: Vec2,
+}
+
+/*
+========================================================================================
+Enums
+========================================================================================
+ */
