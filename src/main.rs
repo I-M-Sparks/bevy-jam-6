@@ -1,6 +1,3 @@
-use std::any::Any;
-
-use bevy::log::*;
 use bevy::prelude::*;
 
 fn main() {
@@ -32,7 +29,12 @@ Constants
 // define z values for various assets; creates layers through z-components of transform
 // this ensures a correct drawing order for sprites
 // note: z value of 0 should be set for the background; objects drawn "further in front" must have a HIGHER value
-const RUNE_RENDER_LAYER: f32 = 10.0;
+const RUNE_RENDER_LAYER: f32 = 100.0;
+const CARD_RANDER_LAYER: f32 = 50.0;
+const DONUT_CIRCLE_RENDER_LAYER: f32 = 75.0;
+const DONUT_BASE_RENDER_LAYER: f32 = 76.0;
+const DONUT_FROSTING_RENDER_LAYER: f32 = 76.0;
+const DONUT_SPRINKLES_RENDER_LAYER: f32 = 76.0;
 
 /*
 ========================================================================================
@@ -48,11 +50,22 @@ means a scene that shows all basic gameplay elements which is loaded by default 
 after finishing the MVP scene I can consider doing more than one scene
 */
 fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
+    /*
+    =========================================================================================================
+    spawn meta entities
+    =========================================================================================================
+     */
     // spawn player entity
     commands.spawn((Player, PlayerCanPick));
 
     // spawn camera
     commands.spawn(Camera2d);
+
+    /*
+    =========================================================================================================
+    spawn runes
+    =========================================================================================================
+     */
 
     //spawn a rune
     commands.spawn((
@@ -68,13 +81,104 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Rune,
         Pickable,
-        Transform::from_xyz(-540.0, -100.0, RUNE_RENDER_LAYER),
+        Transform::from_xyz(-540.0, -300.0, RUNE_RENDER_LAYER),
         Sprite::from_image(asset_server.load("runes/PNG/Grey/Slab/runeGrey_slab_002.png")),
     ));
 
-    // TODO spawn a rune slot
+    /*
+    =========================================================================================================
+    spawn runeslots
+    =========================================================================================================
+     */
 
-    // TODO more things
+    /*
+    =========================================================================================================
+    spawn target donut
+    =========================================================================================================
+     */
+
+    // spawn target donut presentation circle of mystic holyness
+    let mut donut_circle_sprite =
+        Sprite::from_image(asset_server.load("Particle Pack/PNG (Black Background)/magic_02.png"));
+    donut_circle_sprite.custom_size = Some(Vec2::new(200.0, 200.0));
+
+    commands.spawn((
+        DonutCircle,
+        Transform::from_xyz(540.0, 260.0, DONUT_CIRCLE_RENDER_LAYER),
+        donut_circle_sprite,
+    ));
+
+    // spawn target donut base
+    let mut donut_base_sprite = Sprite::from_image(asset_server.load("Donuts/PNG/donut_1.png"));
+    donut_base_sprite.custom_size = Some(Vec2::new(80.0, 80.0));
+
+    commands.spawn((
+        DonutCircle,
+        Transform::from_xyz(540.0, 260.0, DONUT_CIRCLE_RENDER_LAYER),
+        donut_base_sprite,
+    ));
+
+    // spawn target donut frosting
+    let mut donut_frosting_sprite =
+        Sprite::from_image(asset_server.load("Donuts/PNG/glazing_5.png"));
+    donut_frosting_sprite.custom_size = Some(Vec2::new(70.0, 70.0));
+
+    commands.spawn((
+        DonutCircle,
+        Transform::from_xyz(540.0, 260.0, DONUT_CIRCLE_RENDER_LAYER),
+        donut_frosting_sprite,
+    ));
+
+    // spawn target donut sprinkles
+    let mut donut_sprinkles_sprite =
+        Sprite::from_image(asset_server.load("Donuts/PNG/sprinkles_1.png"));
+    donut_sprinkles_sprite.custom_size = Some(Vec2::new(70.0, 70.0));
+
+    commands.spawn((
+        DonutCircle,
+        Transform::from_xyz(540.0, 260.0, DONUT_CIRCLE_RENDER_LAYER),
+        donut_sprinkles_sprite,
+    ));
+
+    /*
+    =========================================================================================================
+    spawn cards
+    =========================================================================================================
+     */
+    //spawn 10 of hearts
+    commands.spawn((
+        Card,
+        Transform::from_xyz(-500.0, 200.0, CARD_RANDER_LAYER),
+        Sprite::from_image(asset_server.load("Boardgame Pack/PNG/Cards/cardHearts10.png")),
+    ));
+
+    //spawn jack of hearts
+    commands.spawn((
+        Card,
+        Transform::from_xyz(-350.0, 200.0, CARD_RANDER_LAYER),
+        Sprite::from_image(asset_server.load("Boardgame Pack/PNG/Cards/cardHeartsJ.png")),
+    ));
+
+    //spawn queen of hearts
+    commands.spawn((
+        Card,
+        Transform::from_xyz(-200.0, 200.0, CARD_RANDER_LAYER),
+        Sprite::from_image(asset_server.load("Boardgame Pack/PNG/Cards/cardHeartsQ.png")),
+    ));
+
+    //spawn king of hearts
+    commands.spawn((
+        Card,
+        Transform::from_xyz(-50.0, 200.0, CARD_RANDER_LAYER),
+        Sprite::from_image(asset_server.load("Boardgame Pack/PNG/Cards/cardHeartsK.png")),
+    ));
+
+    //spawn ace of hearts
+    commands.spawn((
+        Card,
+        Transform::from_xyz(100.0, -0.0, CARD_RANDER_LAYER),
+        Sprite::from_image(asset_server.load("Boardgame Pack/PNG/Cards/cardHeartsA.png")),
+    ));
 
     info!("Setup completed");
 }
@@ -83,8 +187,11 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
 Queries the currently moved object and moves it to the cursor position
  */
 fn move_picked_object(
+    // Execution Conditions
     picked: Single<&mut Transform, With<Picked>>,
+    // Globals
     camera_q: Query<(&Camera, &GlobalTransform)>,
+    // Events
     mut cursor_evr: EventReader<CursorMoved>,
 ) {
     let mut transform = picked.into_inner();
@@ -113,12 +220,16 @@ fn move_picked_object(
 Handles whichever action caused a Pick-Event
  */
 fn handle_pick_event(
-    mut pick_event_reader: EventReader<PickEvent>,
+    //excution conditions
+    player_single: Single<Entity, (With<PlayerCanPick>, With<PlayerAttemptsPick>)>,
+    //Globals
     mut commands: Commands,
     images: Res<Assets<Image>>,
+    //Event readers
+    mut pick_event_reader: EventReader<PickEvent>,
+    //Queries
     camera_q: Query<(&Camera, &GlobalTransform)>,
     pickables: Query<(Entity, &mut Transform, &Sprite), (With<Pickable>, Without<Picked>)>,
-    player_single: Single<Entity, (With<PlayerCanPick>, With<PlayerAttemptsPick>)>,
 ) {
     trace!("Pick event processing");
     let player_entity = player_single.into_inner();
@@ -141,7 +252,7 @@ fn handle_pick_event(
     }
 
     //react to click if inside Pickable Sprite
-    for (entity, transform, sprite) in pickables {
+    for (pickable_entity, transform, sprite) in pickables {
         /*
         IF mouse click is inside pickable
         THEN add Picked-component to that entity AND interrupt loop
@@ -167,7 +278,7 @@ fn handle_pick_event(
             && event_location_in_world.y > transform.translation.y - sprite_size.y * 0.5
             && event_location_in_world.y < transform.translation.y + sprite_size.y * 0.5
         {
-            commands.entity(entity).insert(Picked);
+            commands.entity(pickable_entity).insert(Picked);
 
             commands.entity(player_entity).remove::<PlayerCanPick>();
             break;
@@ -181,9 +292,12 @@ Handles the release of whichever Action caused a previous pick event
 Release event is ignored if no Picked object was found
  */
 fn handle_release_event(
+    // Execution conditions
+    player_single: Single<Entity, (With<Player>, With<PlayerAttemptsRelease>)>,
+    // Globals
     mut commands: Commands,
     mut release_event_reader: EventReader<ReleaseEvent>,
-    player_single: Single<Entity, (With<Player>, With<PlayerAttemptsRelease>)>,
+    // Queries
     picked: Option<Single<(Entity, &mut Transform), With<Picked>>>,
 ) {
     trace!("Release event processing");
@@ -242,7 +356,7 @@ fn controls(
         let window = windows.single().ok().unwrap();
 
         release_event_writer.write(ReleaseEvent {
-            location_in_screen_coordinates: window.cursor_position().unwrap(),
+            location_in_screen_coordinates: window.cursor_position().unwrap_or_default(),
         });
         commands.entity(player_entity).insert(PlayerAttemptsRelease);
     }
@@ -310,6 +424,12 @@ marks that the player is attempting a release
  */
 #[derive(Component)]
 struct PlayerAttemptsRelease;
+
+#[derive(Component)]
+struct Card;
+
+#[derive(Component)]
+struct DonutCircle;
 
 /*
 ========================================================================================
