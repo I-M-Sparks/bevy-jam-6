@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{log::*, prelude::*};
 
 fn main() {
     App::new()
@@ -16,9 +16,6 @@ fn main() {
         .add_event::<PickEvent>()
         .add_event::<ReleaseEvent>()
         .run();
-
-    //TODO Pre game start load all spritesheets
-    //TODO figure out how to read spritesheets
 }
 
 /*
@@ -114,7 +111,7 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.spawn((
         DonutCircle,
-        Transform::from_xyz(540.0, 260.0, DONUT_CIRCLE_RENDER_LAYER),
+        Transform::from_xyz(540.0, 260.0, DONUT_BASE_RENDER_LAYER),
         donut_base_sprite,
     ));
 
@@ -125,7 +122,7 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.spawn((
         DonutCircle,
-        Transform::from_xyz(540.0, 260.0, DONUT_CIRCLE_RENDER_LAYER),
+        Transform::from_xyz(540.0, 260.0, DONUT_FROSTING_RENDER_LAYER),
         donut_frosting_sprite,
     ));
 
@@ -136,7 +133,7 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     commands.spawn((
         DonutCircle,
-        Transform::from_xyz(540.0, 260.0, DONUT_CIRCLE_RENDER_LAYER),
+        Transform::from_xyz(540.0, 260.0, DONUT_SPRINKLES_RENDER_LAYER),
         donut_sprinkles_sprite,
     ));
 
