@@ -1,12 +1,16 @@
-use bevy::{log::*, prelude::*};
+use avian2d::prelude::*;
+use bevy::{ecs::system::command, log::*, prelude::*};
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(LogPlugin {
-            filter: "error,bevy_jam_6=trace".to_string(),
-            level: Level::TRACE,
-            ..Default::default()
-        }))
+        .add_plugins(
+            (DefaultPlugins.set(LogPlugin {
+                filter: "error,bevy_jam_6=trace".to_string(),
+                level: Level::TRACE,
+                ..Default::default()
+            })),
+        )
+        .add_plugins(PhysicsPlugins::default())
         .add_systems(Startup, setup_mvp_scene)
         .add_systems(
             Update,
@@ -26,12 +30,20 @@ Constants
 // define z values for various assets; creates layers through z-components of transform
 // this ensures a correct drawing order for sprites
 // note: z value of 0 should be set for the background; objects drawn "further in front" must have a HIGHER value
-const RUNE_RENDER_LAYER: f32 = 100.0;
-const CARD_RANDER_LAYER: f32 = 50.0;
+
+const RUNE_MACHINE_RENDER_LAYER: f32 = 50.0;
+// Rune-slots are child-entities of rune machine parts, so they are rendered on top of them
+const RUNE_SLOT_RENDER_LAYER: f32 = 1.0;
+
 const DONUT_CIRCLE_RENDER_LAYER: f32 = 75.0;
 const DONUT_BASE_RENDER_LAYER: f32 = 76.0;
-const DONUT_FROSTING_RENDER_LAYER: f32 = 76.0;
-const DONUT_SPRINKLES_RENDER_LAYER: f32 = 76.0;
+const DONUT_FROSTING_RENDER_LAYER: f32 = 77.0;
+const DONUT_SPRINKLES_RENDER_LAYER: f32 = 78.0;
+
+const BALL_FIRING_THINGY_RENDER_LAYER: f32 = 99.0;
+
+const RUNE_RENDER_LAYER: f32 = 100.0;
+const BALL_RENDER_LAYER: f32 = 101.0;
 
 /*
 ========================================================================================
@@ -84,9 +96,57 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     /*
     =========================================================================================================
-    spawn runeslots
+    Spawn starter-balls
     =========================================================================================================
      */
+
+    // Blue ball
+    let blue_ball_sprite =
+        Sprite::from_image(asset_server.load("Puzzle Assets/PNG/Double/ballBlue.png"));
+
+    commands.spawn((
+        BlueBall,
+        blue_ball_sprite,
+        Transform::from_xyz(-540.0, -200.0, BALL_RENDER_LAYER),
+        Pickable,
+    ));
+
+    // Grey balls
+    let grey_ball_sprite =
+        Sprite::from_image(asset_server.load("Puzzle Assets/PNG/Double/ballGrey.png"));
+
+    commands.spawn((
+        GreyBall,
+        grey_ball_sprite.clone(),
+        Transform::from_xyz(-490.0, -200.0, BALL_RENDER_LAYER),
+        Pickable,
+    ));
+
+    commands.spawn((
+        GreyBall,
+        grey_ball_sprite.clone(),
+        Transform::from_xyz(-440.0, -200.0, BALL_RENDER_LAYER),
+        Pickable,
+    ));
+
+    // Ball firing Thingy
+    commands
+        .spawn((
+            BallFiringThingy,
+            Sprite::from_image(
+                asset_server.load("UI Pack/PNG/Grey/Double/check_round_grey_circle.png"),
+            ),
+            Transform::from_xyz(500.0, -150.0, BALL_FIRING_THINGY_RENDER_LAYER),
+        ))
+        .with_children(|parent| {
+            // spawn arrow of ball firing thingy
+            parent.spawn((
+                Sprite::from_image(
+                    asset_server.load("UI Pack/PNG/Grey/Double/arrow_decorative_w.png"),
+                ),
+                Transform::from_xyz(-64.0, 0.0, 0.0),
+            ));
+        });
 
     /*
     =========================================================================================================
@@ -145,37 +205,48 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     //spawn 10 of hearts
     commands.spawn((
         Card,
-        Transform::from_xyz(-500.0, 200.0, CARD_RANDER_LAYER),
+        Transform::from_xyz(-500.0, 200.0, RUNE_MACHINE_RENDER_LAYER),
         Sprite::from_image(asset_server.load("Boardgame Pack/PNG/Cards/cardHearts10.png")),
     ));
 
     //spawn jack of hearts
     commands.spawn((
         Card,
-        Transform::from_xyz(-350.0, 200.0, CARD_RANDER_LAYER),
+        Transform::from_xyz(-350.0, 200.0, RUNE_MACHINE_RENDER_LAYER),
         Sprite::from_image(asset_server.load("Boardgame Pack/PNG/Cards/cardHeartsJ.png")),
     ));
 
     //spawn queen of hearts
     commands.spawn((
         Card,
-        Transform::from_xyz(-200.0, 200.0, CARD_RANDER_LAYER),
+        Transform::from_xyz(-200.0, 200.0, RUNE_MACHINE_RENDER_LAYER),
         Sprite::from_image(asset_server.load("Boardgame Pack/PNG/Cards/cardHeartsQ.png")),
     ));
 
     //spawn king of hearts
     commands.spawn((
         Card,
-        Transform::from_xyz(-50.0, 200.0, CARD_RANDER_LAYER),
+        Transform::from_xyz(-50.0, 200.0, RUNE_MACHINE_RENDER_LAYER),
         Sprite::from_image(asset_server.load("Boardgame Pack/PNG/Cards/cardHeartsK.png")),
     ));
 
     //spawn ace of hearts
-    commands.spawn((
-        Card,
-        Transform::from_xyz(100.0, -0.0, CARD_RANDER_LAYER),
-        Sprite::from_image(asset_server.load("Boardgame Pack/PNG/Cards/cardHeartsA.png")),
-    ));
+    commands
+        .spawn((
+            Card,
+            Transform::from_xyz(100.0, -200.0, RUNE_MACHINE_RENDER_LAYER),
+            Sprite::from_image(asset_server.load("Boardgame Pack/PNG/Cards/cardHeartsA.png")),
+        ))
+        .with_children(|parent| {
+            // spawn rune slot
+            parent.spawn((
+                RuneSlot,
+                Transform::from_xyz(0.0, 0.0, RUNE_SLOT_RENDER_LAYER).with_scale(Vec3::splat(1.3)),
+                Sprite::from_image(
+                    asset_server.load("runes/PNG/Black/Slab/runeBlack_slab_036.png"),
+                ),
+            ));
+        });
 
     info!("Setup completed");
 }
@@ -211,6 +282,23 @@ fn move_picked_object(
             transform.translation.x, transform.translation.y
         );
     }
+}
+
+/*
+Calculates sprite size and returns it
+ */
+fn calculate_sprite_size(images: &Res<Assets<Image>>, sprite: &Sprite, scale: &Vec3) -> Vec2 {
+    let sprite_size = if let Some(custom_size) = sprite.custom_size {
+        custom_size
+    } else if let Some(image) = images.get(sprite.image.id()) {
+        image.size_f32()
+    } else {
+        Vec2::new(1.0, 1.0)
+    };
+
+    let sprite_size = sprite_size * scale.truncate();
+
+    return sprite_size;
 }
 
 /*
@@ -258,15 +346,8 @@ fn handle_pick_event(
         note: bevy probably has a more elegant way to do this but I didn't find it immediately and won't waste Jam-time searching for it
         note note: it seems bevy currently has no elegant way to find the actual sprite size, so I need to use this monstrosity
          */
-        let sprite_size = if let Some(custom_size) = sprite.custom_size {
-            custom_size
-        } else if let Some(image) = images.get(sprite.image.id()) {
-            image.size_f32()
-        } else {
-            Vec2::new(1.0, 1.0)
-        };
 
-        let sprite_size = sprite_size * transform.scale.truncate();
+        let sprite_size = calculate_sprite_size(&images, sprite, &transform.scale);
         trace!("sprite size {:?}", sprite_size);
 
         // note: this is assuming the Sprite-Anchor is CENTER
@@ -296,6 +377,8 @@ fn handle_release_event(
     mut release_event_reader: EventReader<ReleaseEvent>,
     // Queries
     picked: Option<Single<(Entity, &mut Transform), With<Picked>>>,
+    rune_slots: Query<&Transform, (With<RuneSlot>, Without<Picked>)>,
+    //ball_firing_thingy: Option<Single<&Transform, With<BallFiringThingy>>>,
 ) {
     trace!("Release event processing");
 
@@ -317,11 +400,33 @@ fn handle_release_event(
         //assumption: whatever object was picked has been moved to wherever the cursor had been
         //-> the objects transform is ready for further usage
 
+        /*/
+        let entity_ref = world.entity(picked_entity);
+        if entity_ref.get::<Rune>().is_some() {
+            // TODO do runy things
+        } else if entity_ref.get::<BlueBall>().is_some() {
+            // TODO do ballsy things
+            /*
+            if let Some(ball_firing_thingy) = ball_firing_thingy {
+                let mut ball_firing_thingy_transform = ball_firing_thingy.into_inner();
+            }
+            */
+        };
+        */
+
         // TODO check for overlap between picked entity and potential slot -> how to best do this?
         // read screen-position from event
         // translate to world position
         // check for overlap with all 'slot' entities
     }
+}
+
+fn is_world_position_inside_sprite(
+    world_position: &Transform,
+    sprite_center_position: &Transform,
+    sprite_size: Vec2,
+) -> bool {
+    false
 }
 
 fn controls(
@@ -427,6 +532,21 @@ struct Card;
 
 #[derive(Component)]
 struct DonutCircle;
+
+#[derive(Component)]
+struct BlueBall;
+
+#[derive(Component)]
+struct GreyBall;
+
+#[derive(Component)]
+struct BallLauncher;
+
+#[derive(Component)]
+struct BallFiringThingy;
+
+#[derive(Component)]
+struct RuneSlot;
 
 /*
 ========================================================================================

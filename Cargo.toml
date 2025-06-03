@@ -5,7 +5,10 @@ edition = "2024"
 
 [dependencies]
 bevy = "0.16.1"
+#log trace levels
 log = { version = "*", features = ["max_level_trace", "release_max_level_warn"] }
+#physics
+avian2d = "0.3"
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]

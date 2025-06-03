@@ -185,3 +185,18 @@ Must have visual packs:
 +++
 Idea from the Board game pack: the trigger for a next event could be completing a series of cards
 alternatively: complete a word
+
+============
+Mininmal Game logic:
+-shoot ball at rune
+-triggers Rune
+-pushes card into target position
+-card completes straight
+-straight completion summons donut
+=============
+
+visual language:
+-blue things can be dragged around and dropped
+-grey balls mark additional attempts, but are not Pickable
+-Pickable runes should be blue
+-not Pickable runes, if there are any, should be grey

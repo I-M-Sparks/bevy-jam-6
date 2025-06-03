@@ -43,36 +43,24 @@ next step: Prototype
 -figure out how to track when a machine has reached it's conclusion (both success and failure)
 
 goal: enable player to set up a single chain reaction with at least two components and play on web, with a detected failure/success
+===========
 
-++++
+============
+Mininmal Game logic:
+-shoot ball at rune
+-triggers Rune
+-pushes card into target position
+-card completes straight
+-straight completion summons donut
 
-FixedUpdate vs Update
-
-moved the function that places the currently Picked object on the mouse cursor to a separate system which runs on Update, not FixedUpdate
--> feels much smoother
-
-+++
-
-Single-Queries can be used as conditions for functions
-
-by adding a Single Query like this:
-Single<Entity, (With<ComponentA>, Without<ComponentB>)>
-
-effectively, this means that the function containing this query will only run if there is an entity that holds A-and-not-B
-
-now I can just create an entity that is used as a "meta-entity", for example a player entity that holds no visible game content
-
-I used it to react to press/release events only if the player was marked with "PlayerAttemptsPress"/"PlayerAttemptsRelease"
-
-+++
-
-sprites
-
-Sprites can be changed in size by using the custom_size field
-their size can also be changed by using the scale in a transformn component (within the same entity, the sprite itself doesn't have a transform inside)
-NOTE: when using both custom_size AND scale, they add up; so the end result-size is custom_size * scale
-
-the z-component of the transform is used by the sprite as render-layer; 0 is the furthest in the back, higher numbers = further to the front
-NOTE: when scaling the sprite, the z-component of the scale has no effect (aka does not change a sprites render layer)
-
-+++
+----> Implementation next steps:
+-place rune slots
+-enable player to put runes into slots
+-activate/deactivate effect preview when rune is placed/removed
+-add ball-firing-thingy
+--decice what that is
+-enable playing ball in ball-firing-thingy
+-enable firing the ball (physics)
+-decide how to activate follow up effects
+-implement snapping to origin transform for all Pickables UNLESS they are placed in runeslot/ball-firing-thingy
+===

@@ -89,5 +89,52 @@ This will cause the system to be skipped, according to the rules laid out in Sys
 =====
 
 Follow up question: how to actually use / unwrap/ access the Option<Single<..>>?
-Answer: 
+Answer: unrwap (and hope for the best ;) )
 
+
+====
+
+
+FixedUpdate vs Update
+
+moved the function that places the currently Picked object on the mouse cursor to a separate system which runs on Update, not FixedUpdate
+-> feels much smoother
+
++++
+
+Single-Queries can be used as conditions for functions
+
+by adding a Single Query like this:
+Single<Entity, (With<ComponentA>, Without<ComponentB>)>
+
+effectively, this means that the function containing this query will only run if there is an entity that holds A-and-not-B
+
+now I can just create an entity that is used as a "meta-entity", for example a player entity that holds no visible game content
+
+I used it to react to press/release events only if the player was marked with "PlayerAttemptsPress"/"PlayerAttemptsRelease"
+
++++
+
+sprites
+
+Sprites can be changed in size by using the custom_size field
+their size can also be changed by using the scale in a transformn component (within the same entity, the sprite itself doesn't have a transform inside)
+NOTE: when using both custom_size AND scale, they add up; so the end result-size is custom_size * scale
+
+the z-component of the transform is used by the sprite as render-layer; 0 is the furthest in the back, higher numbers = further to the front
+NOTE: when scaling the sprite, the z-component of the scale has no effect (aka does not change a sprites render layer)
+
++++
+
+sprites in child entities
+
+when en entity with has a child entity and that child entity holds a sprite, the tranforms of parent & child are added, which affects the render layer!
+
++++
+
+Queries can block each other
+
+Queries MUST be ensured to be disjoint if they access the same componnet (i.e., have one query for transforms of entities with component A, and another for transforms of entity with Component B)
+-> use With<A> for the first, (With<B>, Without<A>) for the secound
+
++++
