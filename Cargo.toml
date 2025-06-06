@@ -8,7 +8,7 @@ bevy = "0.16.1"
 #log trace levels
 log = { version = "*", features = ["max_level_trace", "release_max_level_warn"] }
 #physics
-avian2d = "0.3"
+avian2d = "0.3.1"
 
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
@@ -20,4 +20,4 @@ opt-level = 3
 
 # for Windows
 [target.x86_64-pc-windows-msvc]
-linker = "rust-lld.exe"
+#linker = "rust-lld.exe"

@@ -1,15 +1,13 @@
 use avian2d::prelude::*;
-use bevy::{ecs::system::command, log::*, prelude::*};
+use bevy::{log::*, prelude::*};
 
 fn main() {
     App::new()
-        .add_plugins(
-            (DefaultPlugins.set(LogPlugin {
-                filter: "error,bevy_jam_6=trace".to_string(),
-                level: Level::TRACE,
-                ..Default::default()
-            })),
-        )
+        .add_plugins(DefaultPlugins.set(LogPlugin {
+            filter: "error,bevy_jam_6=trace".to_string(),
+            level: Level::TRACE,
+            ..Default::default()
+        }))
         .add_plugins(PhysicsPlugins::default())
         .add_systems(Startup, setup_mvp_scene)
         .add_systems(
@@ -58,7 +56,12 @@ means a scene that shows all basic gameplay elements which is loaded by default 
 
 after finishing the MVP scene I can consider doing more than one scene
 */
-fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup_mvp_scene(
+    // Globals
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    images: Res<Assets<Image>>,
+) {
     /*
     =========================================================================================================
     spawn meta entities
@@ -104,10 +107,18 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     let blue_ball_sprite =
         Sprite::from_image(asset_server.load("Puzzle Assets/PNG/Double/ballBlue.png"));
 
+    let blue_ball_default_position = Vec2::new(-540.0, -200.0);
+
     commands.spawn((
-        BlueBall,
+        BlueBall {
+            default_position: blue_ball_default_position.clone(),
+        },
         blue_ball_sprite,
-        Transform::from_xyz(-540.0, -200.0, BALL_RENDER_LAYER),
+        Transform::from_xyz(
+            blue_ball_default_position.x,
+            blue_ball_default_position.y,
+            BALL_RENDER_LAYER,
+        ),
         Pickable,
     ));
 
@@ -115,28 +126,61 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
     let grey_ball_sprite =
         Sprite::from_image(asset_server.load("Puzzle Assets/PNG/Double/ballGrey.png"));
 
+    let mut grey_ball_default_position = Vec2::new(-490.0, -200.0);
+
     commands.spawn((
-        GreyBall,
+        GreyBall {
+            default_position: grey_ball_default_position.clone(),
+        },
         grey_ball_sprite.clone(),
-        Transform::from_xyz(-490.0, -200.0, BALL_RENDER_LAYER),
+        Transform::from_xyz(
+            grey_ball_default_position.x,
+            grey_ball_default_position.y,
+            BALL_RENDER_LAYER,
+        ),
         Pickable,
     ));
 
+    grey_ball_default_position = Vec2::new(-440.0, -200.0);
+
     commands.spawn((
-        GreyBall,
+        GreyBall {
+            default_position: grey_ball_default_position.clone(),
+        },
         grey_ball_sprite.clone(),
-        Transform::from_xyz(-440.0, -200.0, BALL_RENDER_LAYER),
+        Transform::from_xyz(
+            grey_ball_default_position.x,
+            grey_ball_default_position.y,
+            BALL_RENDER_LAYER,
+        ),
         Pickable,
     ));
 
     // Ball firing Thingy
+    let ball_firing_thingy_sprite = Sprite::from_image(
+        asset_server.load("UI Pack/PNG/Grey/Double/check_round_grey_circle.png"),
+    );
+    let ball_firing_thingy_transform =
+        Transform::from_xyz(500.0, -150.0, BALL_FIRING_THINGY_RENDER_LAYER);
+
+    let ball_firing_thingy_collider = Collider::circle(
+        calculate_sprite_size(
+            &images,
+            &ball_firing_thingy_sprite,
+            &ball_firing_thingy_transform.scale,
+        )
+        .x,
+    );
+
+    // note: default direction of BallFiringThingy is to the left
     commands
         .spawn((
-            BallFiringThingy,
-            Sprite::from_image(
-                asset_server.load("UI Pack/PNG/Grey/Double/check_round_grey_circle.png"),
-            ),
-            Transform::from_xyz(500.0, -150.0, BALL_FIRING_THINGY_RENDER_LAYER),
+            BallFiringThingy {
+                firing_direction: Vec2::new(-1.0, 0.0),
+            },
+            ball_firing_thingy_sprite,
+            ball_firing_thingy_transform,
+            ball_firing_thingy_collider,
         ))
         .with_children(|parent| {
             // spawn arrow of ball firing thingy
@@ -252,6 +296,37 @@ fn setup_mvp_scene(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 /*
+Handles Collisions
+*/
+fn handle_ball_collisions_with_ball_firing_thingy(
+    // Execution condition
+    blue_ball: Single<(Entity, &BlueBall, &mut Transform), With<Placed>>,
+    // Globals
+    mut commands: Commands,
+    //Collisions
+    collisions: Collisions,
+    // Queries
+    ball_firing_thingies: Query<(&BallFiringThingy, &Transform)>,
+) {
+    let (blue_ball_entity, blue_ball, mut blue_ball_transform) = blue_ball.into_inner();
+
+    // remove placed immediately, regardless of actual collision
+    commands.entity(blue_ball_entity).remove::<Placed>();
+
+    blue_ball_transform.translation.x = blue_ball.default_position.x;
+
+    for contact_pair in collisions.iter() {
+
+        // ball and ball firing thingy
+        // TODO
+        // IF Entity A has a blue ball component and Entity B has a BallFiringThingy Component (or vice versa)
+        // -> make the ball move ion a pre-defined direction
+
+        // rune and rune slots
+    }
+}
+
+/*
 Queries the currently moved object and moves it to the cursor position
  */
 fn move_picked_object(
@@ -288,7 +363,7 @@ fn move_picked_object(
 Calculates sprite size and returns it
  */
 fn calculate_sprite_size(images: &Res<Assets<Image>>, sprite: &Sprite, scale: &Vec3) -> Vec2 {
-    let sprite_size = if let Some(custom_size) = sprite.custom_size {
+    let mut _sprite_size = if let Some(custom_size) = sprite.custom_size {
         custom_size
     } else if let Some(image) = images.get(sprite.image.id()) {
         image.size_f32()
@@ -296,9 +371,9 @@ fn calculate_sprite_size(images: &Res<Assets<Image>>, sprite: &Sprite, scale: &V
         Vec2::new(1.0, 1.0)
     };
 
-    let sprite_size = sprite_size * scale.truncate();
+    _sprite_size = _sprite_size * scale.truncate();
 
-    return sprite_size;
+    _sprite_size
 }
 
 /*
@@ -331,7 +406,7 @@ fn handle_pick_event(
     //read event
     for pick_event in pick_event_reader.read() {
         event_location_in_world = camera
-            .viewport_to_world_2d(camera_transform, pick_event.location_in_screen_coordinates)
+            .viewport_to_world_2d(camera_transform, pick_event._location_in_screen_coordinates)
             .ok()
             .unwrap();
     }
@@ -374,11 +449,9 @@ fn handle_release_event(
     player_single: Single<Entity, (With<Player>, With<PlayerAttemptsRelease>)>,
     // Globals
     mut commands: Commands,
-    mut release_event_reader: EventReader<ReleaseEvent>,
+    mut _release_event_reader: EventReader<ReleaseEvent>,
     // Queries
     picked: Option<Single<(Entity, &mut Transform), With<Picked>>>,
-    rune_slots: Query<&Transform, (With<RuneSlot>, Without<Picked>)>,
-    //ball_firing_thingy: Option<Single<&Transform, With<BallFiringThingy>>>,
 ) {
     trace!("Release event processing");
 
@@ -392,41 +465,20 @@ fn handle_release_event(
     commands.entity(player_entity).insert(PlayerCanPick);
 
     if let Some(picked_single) = picked {
-        let (picked_entity, transform) = picked_single.into_inner();
+        let (picked_entity, _transform) = picked_single.into_inner();
 
         // "drop" the Pickable by removing the Picked-component
         commands.entity(picked_entity).remove::<Picked>();
+        commands.entity(picked_entity).insert(Placed);
 
         //assumption: whatever object was picked has been moved to wherever the cursor had been
         //-> the objects transform is ready for further usage
-
-        /*/
-        let entity_ref = world.entity(picked_entity);
-        if entity_ref.get::<Rune>().is_some() {
-            // TODO do runy things
-        } else if entity_ref.get::<BlueBall>().is_some() {
-            // TODO do ballsy things
-            /*
-            if let Some(ball_firing_thingy) = ball_firing_thingy {
-                let mut ball_firing_thingy_transform = ball_firing_thingy.into_inner();
-            }
-            */
-        };
-        */
 
         // TODO check for overlap between picked entity and potential slot -> how to best do this?
         // read screen-position from event
         // translate to world position
         // check for overlap with all 'slot' entities
     }
-}
-
-fn is_world_position_inside_sprite(
-    world_position: &Transform,
-    sprite_center_position: &Transform,
-    sprite_size: Vec2,
-) -> bool {
-    false
 }
 
 fn controls(
@@ -446,7 +498,7 @@ fn controls(
         let window = windows.single().ok().unwrap();
 
         pick_event_writer.write(PickEvent {
-            location_in_screen_coordinates: window.cursor_position().unwrap(),
+            _location_in_screen_coordinates: window.cursor_position().unwrap(),
         });
         commands.entity(player_entity).insert(PlayerAttemptsPick);
     }
@@ -458,7 +510,7 @@ fn controls(
         let window = windows.single().ok().unwrap();
 
         release_event_writer.write(ReleaseEvent {
-            location_in_screen_coordinates: window.cursor_position().unwrap_or_default(),
+            _location_in_screen_coordinates: window.cursor_position().unwrap_or_default(),
         });
         commands.entity(player_entity).insert(PlayerAttemptsRelease);
     }
@@ -534,19 +586,25 @@ struct Card;
 struct DonutCircle;
 
 #[derive(Component)]
-struct BlueBall;
+struct BlueBall {
+    default_position: Vec2,
+}
 
 #[derive(Component)]
-struct GreyBall;
+struct GreyBall {
+    default_position: Vec2,
+}
 
 #[derive(Component)]
-struct BallLauncher;
-
-#[derive(Component)]
-struct BallFiringThingy;
+struct BallFiringThingy {
+    firing_direction: Vec2,
+}
 
 #[derive(Component)]
 struct RuneSlot;
+
+#[derive(Component)]
+struct Placed;
 
 /*
 ========================================================================================
@@ -557,13 +615,13 @@ Events
 #[derive(Event)]
 struct PickEvent {
     // screen coordinates means (0,0) to (window_width, window_height); from top-left to bottom-right
-    location_in_screen_coordinates: Vec2,
+    _location_in_screen_coordinates: Vec2,
 }
 
 #[derive(Event)]
 struct ReleaseEvent {
     // screen coordinates means (0,0) to (window_width, window_height); from top-left to bottom-right
-    location_in_screen_coordinates: Vec2,
+    _location_in_screen_coordinates: Vec2,
 }
 
 /*
