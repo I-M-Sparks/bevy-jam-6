@@ -167,3 +167,9 @@ https://github.com/TheBevyFlock/bevy_cli
 
 --> how do I compile... whatever I need to upload to my itch.io page?
 -> 'bevy build web --bundle'; resulting bundle should be in 'target/bevy_web'
+
+from thebvy-cli documentation:
+"
+Note:
+The arguments you know from cargo (like --release) must be placed before the web subcommand, while the web-specific options (like --open) must be placed afterwards, e.g.
+"

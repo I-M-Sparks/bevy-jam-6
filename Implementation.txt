@@ -67,7 +67,8 @@ Mininmal Game logic:
 
 Next Steps:
 -get it running in a web browser (local) - DONE (bevy run web --open)
--add license to git repo
+-add license to git repo - DONE
+-upload to itch to go through the process - BLOCKED because itch.io is down
 -complete the addition of physics so I can actually start implementing the puzzle(s)
 -add puzzle(s)
 ===
