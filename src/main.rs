@@ -1,22 +1,38 @@
-use avian2d::prelude::*;
-use bevy::{log::*, prelude::*};
+use std::{thread::sleep, time::Duration};
+
+use avian2d::{math, prelude::*};
+use bevy::{ecs::system::command, log::*, prelude::*};
 
 fn main() {
     App::new()
+        // DEfault Plugin
         .add_plugins(DefaultPlugins.set(LogPlugin {
             filter: "error,bevy_jam_6=trace".to_string(),
             level: Level::TRACE,
             ..Default::default()
         }))
-        .add_plugins(PhysicsPlugins::default())
+        // Add Default Physics
+        // length unit 100 => 1m = 1 pixels.
+        .add_plugins(PhysicsPlugins::default().with_length_unit(1.0))
+        // Debug physics
+        .add_plugins(PhysicsDebugPlugin::default())
+        // Startup
         .add_systems(Startup, setup_mvp_scene)
+        // Input handling
         .add_systems(
             Update,
             (move_picked_object, handle_pick_event, handle_release_event),
         )
+        // Collision handling
+        .add_systems(Update, handle_ball_collisions_with_ball_firing_thingy)
+        // Input forwarding
         .add_systems(FixedUpdate, controls)
+        // Add colliders to sprites
+        .add_systems(Last, add_colliders)
+        //Events
         .add_event::<PickEvent>()
         .add_event::<ReleaseEvent>()
+        // Run
         .run();
 }
 
@@ -60,7 +76,6 @@ fn setup_mvp_scene(
     // Globals
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    images: Res<Assets<Image>>,
 ) {
     /*
     =========================================================================================================
@@ -109,16 +124,21 @@ fn setup_mvp_scene(
 
     let blue_ball_default_position = Vec2::new(-540.0, -200.0);
 
+    let blue_ball_transform = Transform::from_xyz(
+        blue_ball_default_position.x,
+        blue_ball_default_position.y,
+        BALL_RENDER_LAYER,
+    );
+
     commands.spawn((
         BlueBall {
             default_position: blue_ball_default_position.clone(),
         },
         blue_ball_sprite,
-        Transform::from_xyz(
-            blue_ball_default_position.x,
-            blue_ball_default_position.y,
-            BALL_RENDER_LAYER,
-        ),
+        blue_ball_transform,
+        AddCollider {
+            collider_scale: 1.0,
+        },
         Pickable,
     ));
 
@@ -163,15 +183,6 @@ fn setup_mvp_scene(
     let ball_firing_thingy_transform =
         Transform::from_xyz(500.0, -150.0, BALL_FIRING_THINGY_RENDER_LAYER);
 
-    let ball_firing_thingy_collider = Collider::circle(
-        calculate_sprite_size(
-            &images,
-            &ball_firing_thingy_sprite,
-            &ball_firing_thingy_transform.scale,
-        )
-        .x,
-    );
-
     // note: default direction of BallFiringThingy is to the left
     commands
         .spawn((
@@ -180,7 +191,9 @@ fn setup_mvp_scene(
             },
             ball_firing_thingy_sprite,
             ball_firing_thingy_transform,
-            ball_firing_thingy_collider,
+            AddCollider {
+                collider_scale: 0.5,
+            },
         ))
         .with_children(|parent| {
             // spawn arrow of ball firing thingy
@@ -296,6 +309,38 @@ fn setup_mvp_scene(
 }
 
 /*
+Adjusts ball collider size
+ */
+fn add_colliders(
+    // Globals
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    images: Res<Assets<Image>>,
+    entities_with_add_collider_tag: Query<(Entity, &Transform, &Sprite, &AddCollider)>,
+) {
+    for (entity, transform, sprite, add_collider) in entities_with_add_collider_tag {
+        if asset_server.is_loaded(&sprite.image) {
+            trace!("asset loaded, adding collider");
+
+            // make sure to remove Add Collider
+            commands.entity(entity).remove::<AddCollider>();
+
+            // add collider
+            let collider_size = add_collider.collider_scale
+                * (calculate_sprite_size(&images, &sprite, &transform.scale).x * 0.5);
+
+            commands
+                .entity(entity)
+                .insert(Collider::circle(collider_size));
+
+            debug!("Circle Collider created with size {}", collider_size);
+        } else {
+            trace!("Asset not yet loaded");
+        }
+    }
+}
+
+/*
 Handles Collisions
 */
 fn handle_ball_collisions_with_ball_firing_thingy(
@@ -306,23 +351,64 @@ fn handle_ball_collisions_with_ball_firing_thingy(
     //Collisions
     collisions: Collisions,
     // Queries
-    ball_firing_thingies: Query<(&BallFiringThingy, &Transform)>,
+    ball_firing_thingies: Query<(&BallFiringThingy, &Transform), Without<Placed>>,
 ) {
     let (blue_ball_entity, blue_ball, mut blue_ball_transform) = blue_ball.into_inner();
+
+    trace!("Handling potential collision");
 
     // remove placed immediately, regardless of actual collision
     commands.entity(blue_ball_entity).remove::<Placed>();
 
     blue_ball_transform.translation.x = blue_ball.default_position.x;
+    blue_ball_transform.translation.y = blue_ball.default_position.y;
 
     for contact_pair in collisions.iter() {
+        /*
+        The condition is:
+                IF one of the two colliders is the SINGLE blue ball entity
+                AND one of the two is in the query (the other one, but that doesn't matter yet)
+                -> move blue ball to ball_firing_thingy detected
+        */
+        if (contact_pair.collider1.eq(&blue_ball_entity)
+            || contact_pair.collider2.eq(&blue_ball_entity))
+            && (ball_firing_thingies.contains(contact_pair.collider1)
+                || ball_firing_thingies.contains(contact_pair.collider2))
+        {
+            // ball and ball firing thingy
+            trace!("Ball placed in firing thingy");
 
-        // ball and ball firing thingy
-        // TODO
-        // IF Entity A has a blue ball component and Entity B has a BallFiringThingy Component (or vice versa)
-        // -> make the ball move ion a pre-defined direction
+            // place ball at the transform of firing thingy
+            if contact_pair.collider1.eq(&blue_ball_entity) {
+                // get transform of the collider that is the firing thingy
+                let ball_firing_thingy_transform = ball_firing_thingies
+                    .get(contact_pair.collider2)
+                    .ok()
+                    .unwrap()
+                    .1;
 
-        // rune and rune slots
+                // place ball in firign thingy
+                blue_ball_transform.translation.x = ball_firing_thingy_transform.translation.x;
+                blue_ball_transform.translation.y = ball_firing_thingy_transform.translation.y;
+            } else
+            // colliders2 is blue ball
+            {
+                // get transform of the collider that is the firing thingy
+                let ball_firing_thingy_transform = ball_firing_thingies
+                    .get(contact_pair.collider1)
+                    .ok()
+                    .unwrap()
+                    .1;
+
+                // place ball in firign thingy
+                blue_ball_transform.translation.x = ball_firing_thingy_transform.translation.x;
+                blue_ball_transform.translation.y = ball_firing_thingy_transform.translation.y;
+            }
+
+            // TODO fire ball in direction of firing thingy
+        }
+
+        break;
     }
 }
 
@@ -337,6 +423,8 @@ fn move_picked_object(
     // Events
     mut cursor_evr: EventReader<CursorMoved>,
 ) {
+    // actual code after this
+
     let mut transform = picked.into_inner();
 
     for event in cursor_evr.read() {
@@ -364,10 +452,13 @@ Calculates sprite size and returns it
  */
 fn calculate_sprite_size(images: &Res<Assets<Image>>, sprite: &Sprite, scale: &Vec3) -> Vec2 {
     let mut _sprite_size = if let Some(custom_size) = sprite.custom_size {
+        trace!("Using custom sprite size");
         custom_size
     } else if let Some(image) = images.get(sprite.image.id()) {
+        trace!("using image size");
         image.size_f32()
     } else {
+        warn!("no custom size or sprite size found");
         Vec2::new(1.0, 1.0)
     };
 
@@ -605,6 +696,11 @@ struct RuneSlot;
 
 #[derive(Component)]
 struct Placed;
+
+#[derive(Component)]
+struct AddCollider {
+    collider_scale: f32,
+}
 
 /*
 ========================================================================================

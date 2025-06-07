@@ -173,3 +173,43 @@ from thebvy-cli documentation:
 Note:
 The arguments you know from cargo (like --release) must be placed before the web subcommand, while the web-specific options (like --open) must be placed afterwards, e.g.
 "
+
+=============
+
+Loading assets & handling Async Loading
+
+Problem: calculating collider size based on sprite dimensions failed because spirte info is not availabel immediately
+Appraoch: run while loop while waiting for asset to be loaded
+Failed: assets was never loaded, loop was inifinite, even with 1-second thread sleep
+
+new resource:
+https://deepwiki.com/bevyengine/bevy/4.1-asset-loading-and-handles
+
+final solution:
+-add a component that contains all relevant information for the collider that wil be created in scene-setup ("AddCollider")
+-add system to Last-schedule that queries all entites with Sprites & AddCollider components
+-for each found entity, check if the Sprite has been loaded and if it has, create a collider based on the information contained in AddCollider
+--remove the AddCollider-Component when this happens, it should only be used this once
+
+benefit from this approach: it is fairly generic; I can just expand the information contain in AddCollider over time and use it for any sprite-asset
+-> this could be moved to a Plugin later? is it possible to build a Plugin on top of a plugin? (I'm thinking a Plugin that automatically adds Physics Colliders to Sprites using this system, which would make it much easier to build 2D-sprite-based games with physics... -> I'll check this out later)
+
+Important note: I cannot just assign the transformn of the ball-firing-thingy to the blue-ball, because that also effects the z-component of the translation, which is the render-layer - and for some reason, when they both end up on the same render layer, the firing-thingy always won (not sure why, maybe because it's created later/earlier...?)
+-> solution was to just copy over the x/y-components into the translation of the blue_ball and leave the z untouched
+
+====
+
+Debug rendering
+
+rendering the colliders for debugging was easy:
+'.add_plugins(PhysicsDebugPlugin::default())' did the trick
+
+===
+
+Collider size
+
+the size given to the circle must be in pixels, since it matches perfectly with my calculated sprite sizes
+also, this line:
+'.add_plugins(PhysicsPlugins::default().with_length_unit(1.0))' has no effect at all on collider sizes (about which I wasn't sure originally)
+
+===
