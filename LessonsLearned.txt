@@ -138,3 +138,32 @@ Queries MUST be ensured to be disjoint if they access the same componnet (i.e., 
 -> use With<A> for the first, (With<B>, Without<A>) for the secound
 
 +++
+
+Building for web
+
+for reference: https://bevy-cheatbook.github.io/platforms/wasm.html
+
+(I have done practically nothing with web in my life so please don't judge me for writing down basic stuff)
+-'building for web' means targeting WASM (WebAssembly)
+-the resulting file(? files?) can then be embedded into a website
+--> you must either host a site yourself and embed the game into that OR use a provider; itch.io makes this very easy
+--> the itch.io page can also be used as submission to a Jam
+
+in case the reference ceases to exist at some point, here is the gist:
+-install wasm target by running in command line: 'rustup target install wasm32-unknown-unknown'
+-install wasm-server-runner: 'cargo install wasm-server-runner'
+!!!! compilation failed !!!: "Missing dependency: cmake
+++++
+--> I'm assuming this would need cmake added to environment variables? but I don't know for sure -> I'll try the cli-alpha...:
+https://github.com/TheBevyFlock/bevy_cli
+
+-install it to cargo (not a crate yet, so need to install it from github):
+'cargo install --git https://github.com/TheBevyFlock/bevy_cli --tag cli-v0.1.0-alpha.1 --locked bevy_cli'
+
+'bevy lint' to check code quality
+
+'bevy run web --open' to run the app in browser 
+-> worked!
+
+--> how do I compile... whatever I need to upload to my itch.io page?
+-> 'bevy build web --bundle'; resulting bundle should be in 'target/bevy_web'

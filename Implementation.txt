@@ -64,3 +64,10 @@ Mininmal Game logic:
 -decide how to activate follow up effects
 -implement snapping to origin transform for all Pickables UNLESS they are placed in runeslot/ball-firing-thingy
 ===
+
+Next Steps:
+-get it running in a web browser (local) - DONE (bevy run web --open)
+-add license to git repo
+-complete the addition of physics so I can actually start implementing the puzzle(s)
+-add puzzle(s)
+===
