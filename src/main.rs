@@ -24,7 +24,7 @@ fn main() {
             (move_picked_object, handle_pick_event, handle_release_event),
         )
         // Collision handling
-        .add_systems(Update, handle_ball_collisions_with_ball_firing_thingy)
+        .add_systems(Update, handle_collision_ball_with_ball_firing_thingy)
         // Input forwarding
         .add_systems(FixedUpdate, controls)
         // Add colliders to sprites
@@ -140,6 +140,7 @@ fn setup_mvp_scene(
             collider_scale: 1.0,
         },
         Pickable,
+        RigidBody::Kinematic,
     ));
 
     // Grey balls
@@ -158,7 +159,7 @@ fn setup_mvp_scene(
             grey_ball_default_position.y,
             BALL_RENDER_LAYER,
         ),
-        Pickable,
+        RigidBody::Kinematic,
     ));
 
     grey_ball_default_position = Vec2::new(-440.0, -200.0);
@@ -174,6 +175,7 @@ fn setup_mvp_scene(
             BALL_RENDER_LAYER,
         ),
         Pickable,
+        RigidBody::Kinematic,
     ));
 
     // Ball firing Thingy
@@ -187,12 +189,13 @@ fn setup_mvp_scene(
     commands
         .spawn((
             BallFiringThingy {
-                firing_direction: Vec2::new(-1.0, 0.0),
+                // speed is units per second; see addition of physics plugin to determine how much that is in pixels
+                firing_direction: Vec2::new(-100.0, 0.0),
             },
             ball_firing_thingy_sprite,
             ball_firing_thingy_transform,
             AddCollider {
-                collider_scale: 0.5,
+                collider_scale: 0.3,
             },
         ))
         .with_children(|parent| {
@@ -343,9 +346,9 @@ fn add_colliders(
 /*
 Handles Collisions
 */
-fn handle_ball_collisions_with_ball_firing_thingy(
+fn handle_collision_ball_with_ball_firing_thingy(
     // Execution condition
-    blue_ball: Single<(Entity, &BlueBall, &mut Transform), With<Placed>>,
+    blue_ball: Single<(Entity, &BlueBall, &mut Transform, &mut LinearVelocity), With<Placed>>,
     // Globals
     mut commands: Commands,
     //Collisions
@@ -353,7 +356,8 @@ fn handle_ball_collisions_with_ball_firing_thingy(
     // Queries
     ball_firing_thingies: Query<(&BallFiringThingy, &Transform), Without<Placed>>,
 ) {
-    let (blue_ball_entity, blue_ball, mut blue_ball_transform) = blue_ball.into_inner();
+    let (blue_ball_entity, blue_ball, mut blue_ball_transform, mut blue_ball_velocity) =
+        blue_ball.into_inner();
 
     trace!("Handling potential collision");
 
@@ -378,37 +382,51 @@ fn handle_ball_collisions_with_ball_firing_thingy(
             // ball and ball firing thingy
             trace!("Ball placed in firing thingy");
 
+            // closure; moves blue ball to ball firing thingy translation
+            let move_blue_ball_to_firing_thingy =
+                |ball_firing_entity: Entity,
+                 query: &Query<(&BallFiringThingy, &Transform), Without<Placed>>,
+                 blue_ball_translation: &mut Vec3| {
+                    let ball_firing_thingy_transform =
+                        query.get(ball_firing_entity).ok().unwrap().1;
+
+                    // place ball in firign thingy
+                    blue_ball_translation.x = ball_firing_thingy_transform.translation.x;
+                    blue_ball_translation.y = ball_firing_thingy_transform.translation.y;
+                };
+
+            let entity_ball_firing_thingy: Entity;
+
             // place ball at the transform of firing thingy
             if contact_pair.collider1.eq(&blue_ball_entity) {
-                // get transform of the collider that is the firing thingy
-                let ball_firing_thingy_transform = ball_firing_thingies
-                    .get(contact_pair.collider2)
-                    .ok()
-                    .unwrap()
-                    .1;
-
-                // place ball in firign thingy
-                blue_ball_transform.translation.x = ball_firing_thingy_transform.translation.x;
-                blue_ball_transform.translation.y = ball_firing_thingy_transform.translation.y;
+                entity_ball_firing_thingy = contact_pair.collider2;
             } else
             // colliders2 is blue ball
             {
-                // get transform of the collider that is the firing thingy
-                let ball_firing_thingy_transform = ball_firing_thingies
-                    .get(contact_pair.collider1)
-                    .ok()
-                    .unwrap()
-                    .1;
-
-                // place ball in firign thingy
-                blue_ball_transform.translation.x = ball_firing_thingy_transform.translation.x;
-                blue_ball_transform.translation.y = ball_firing_thingy_transform.translation.y;
+                entity_ball_firing_thingy = contact_pair.collider1;
             }
 
-            // TODO fire ball in direction of firing thingy
-        }
+            move_blue_ball_to_firing_thingy(
+                entity_ball_firing_thingy,
+                &ball_firing_thingies,
+                &mut blue_ball_transform.translation,
+            );
 
-        break;
+            // fire ball in direction of firing thingy
+            // TODO consider rotation of ball firing_thingy (from Transform-component)
+            blue_ball_velocity.0 = ball_firing_thingies
+                .get(entity_ball_firing_thingy)
+                .ok()
+                .unwrap()
+                .0
+                .firing_direction;
+
+            // blue ball can no longer be picked -> remove Pickable component
+            commands.entity(blue_ball_entity).remove::<Pickable>();
+
+            // relevant collision was detected & handled -> interrupt the loop
+            break;
+        }
     }
 }
 
@@ -700,6 +718,7 @@ struct Placed;
 #[derive(Component)]
 struct AddCollider {
     collider_scale: f32,
+    collider_type: ColliderType,
 }
 
 /*
@@ -725,3 +744,7 @@ struct ReleaseEvent {
 Enums
 ========================================================================================
  */
+pub enum ColliderType {
+    Circle,
+    Rectangle,
+}

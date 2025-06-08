@@ -213,3 +213,21 @@ also, this line:
 '.add_plugins(PhysicsPlugins::default().with_length_unit(1.0))' has no effect at all on collider sizes (about which I wasn't sure originally)
 
 ===
+
+Moving kinematic bodies
+
+Add a kinematic RigidBody - apparently - also adds A linearVevlocity component
+This component can be queried and modified in a system, but what I'm trying to do is different: I want to create A RigidBody with an initial LinearVelocity...
+-> how to do that?
+-RigidBody Component is just an enum! -> can't do it there
+
+-kinematic character example from avian uses queries for this...
+
+-approach: add RigidBody on object creation, and query the linear velocity in the collision handling to overwrite it
+-> Worked!
+
+-Note: LinearVelocity has no named member, so to access it, it goes like this:
+PSEUDO CODE 
+linear_velocity.0 = <Vec2 in avian2d>
+
+===
