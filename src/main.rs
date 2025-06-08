@@ -24,7 +24,13 @@ fn main() {
             (move_picked_object, handle_pick_event, handle_release_event),
         )
         // Collision handling
-        .add_systems(PostUpdate, handle_collision_ball_with_ball_firing_thingy)
+        .add_systems(
+            PostUpdate,
+            (
+                handle_collision_ball_with_ball_firing_thingy,
+                handle_collision_rune_with_rune_slot,
+            ),
+        )
         // Input forwarding
         .add_systems(FixedUpdate, controls)
         // Add colliders to sprites
@@ -94,11 +100,21 @@ fn setup_mvp_scene(
     =========================================================================================================
      */
 
+    let mut rune_default_position;
+
+    rune_default_position = Vec2::new(-600.0, -300.0);
+
     //spawn a rune
     commands.spawn((
-        Rune,
+        Rune {
+            default_position: rune_default_position,
+        },
         Pickable,
-        Transform::from_xyz(-600.0, -300.0, RUNE_RENDER_LAYER),
+        Transform::from_xyz(
+            rune_default_position.x,
+            rune_default_position.y,
+            RUNE_RENDER_LAYER,
+        ),
         Sprite::from_image(asset_server.load("runes/PNG/Grey/Slab/runeGrey_slab_001.png")),
         AddCollider {
             collider_scale: 1.0,
@@ -106,11 +122,19 @@ fn setup_mvp_scene(
         },
     ));
 
+    rune_default_position = Vec2::new(-540.0, -300.0);
+
     //spawn a second rune
     commands.spawn((
-        Rune,
+        Rune {
+            default_position: rune_default_position,
+        },
         Pickable,
-        Transform::from_xyz(-540.0, -300.0, RUNE_RENDER_LAYER),
+        Transform::from_xyz(
+            rune_default_position.x,
+            rune_default_position.y,
+            RUNE_RENDER_LAYER,
+        ),
         Sprite::from_image(asset_server.load("runes/PNG/Grey/Slab/runeGrey_slab_002.png")),
         AddCollider {
             collider_scale: 1.0,
@@ -370,7 +394,13 @@ fn add_colliders(
 }
 
 /*
-Handles Collisions
+========================================================================================
+Collision Handling
+========================================================================================
+ */
+
+/*
+Handle Collisions between the blue ball and the ball firing thingy (or thingies, if there are multiple)
 */
 fn handle_collision_ball_with_ball_firing_thingy(
     // Execution condition
@@ -382,10 +412,10 @@ fn handle_collision_ball_with_ball_firing_thingy(
     // Queries
     ball_firing_thingies: Query<(&BallFiringThingy, &Transform), Without<Placed>>,
 ) {
+    trace!("Handling potential collision between blue ball and ball firing thingy");
+
     let (blue_ball_entity, blue_ball, mut blue_ball_transform, mut blue_ball_velocity) =
         blue_ball.into_inner();
-
-    trace!("Handling potential collision");
 
     // remove placed immediately, regardless of actual collision
     commands.entity(blue_ball_entity).remove::<Placed>();
@@ -449,6 +479,63 @@ fn handle_collision_ball_with_ball_firing_thingy(
 
             // blue ball can no longer be picked -> remove Pickable component
             commands.entity(blue_ball_entity).remove::<Pickable>();
+
+            // relevant collision was detected & handled -> interrupt the loop
+            break;
+        }
+    }
+}
+
+/*
+Handles Collision between the placed rune and all rune slots
+ */
+fn handle_collision_rune_with_rune_slot(
+    // Execution condition
+    rune: Single<(Entity, &Rune, &mut Transform), With<Placed>>,
+    // Globals
+    mut commands: Commands,
+    //Collisions
+    collisions: Collisions,
+    // Queries
+    rune_slots: Query<(&RuneSlot, &Transform), Without<Placed>>,
+) {
+    trace!("Handling potential collision between rune and rune slot");
+
+    let (rune_entity, rune, mut rune_transform) = rune.into_inner();
+
+    // remove placed immediately, regardless of actual collision
+    commands.entity(rune_entity).remove::<Placed>();
+
+    // place rune in it's default position; will be overwritten if a collision is detected
+    rune_transform.translation.x = rune.default_position.x;
+    rune_transform.translation.y = rune.default_position.y;
+
+    for contact_pair in collisions.iter() {
+        /*
+        The condition is:
+                IF one of the two colliders is the SINGLE rune entity
+                AND one of the two is in the query (the other one, but that doesn't matter yet)
+                -> move rune to rune_slot detected (by making it a child?)
+        */
+        if (contact_pair.collider1.eq(&rune_entity) || contact_pair.collider2.eq(&rune_entity))
+            && (rune_slots.contains(contact_pair.collider1)
+                || rune_slots.contains(contact_pair.collider2))
+        {
+            let entity_rune_slot: Entity;
+
+            if contact_pair.collider1.eq(&rune_entity) {
+                entity_rune_slot = contact_pair.collider2;
+            } else {
+                entity_rune_slot = contact_pair.collider1;
+            }
+
+            commands.entity(entity_rune_slot).add_child(rune_entity);
+            // rune is now child of rune_slot, so transform will be relative to rune_slot; using ZERO will place the rune at the center
+            rune_transform.translation = Vec3::ZERO;
+            // need z to be above 0.0 to ensure the Rune is oin a higher Render Layer
+            rune_transform.translation.z = 1.0;
+            // need to invert the scale of the rune slot, otherwhise the rune is scaled by the same factor as the rune_slot
+            rune_transform.scale = 1.0 / rune_slots.get(entity_rune_slot).ok().unwrap().1.scale;
 
             // relevant collision was detected & handled -> interrupt the loop
             break;
@@ -674,7 +761,9 @@ Components
 /*
  */
 #[derive(Component)]
-struct Rune;
+struct Rune {
+    default_position: Vec2,
+}
 
 /*
 marks an object as 'Pickable', meaning the player can pick it and drag it around
