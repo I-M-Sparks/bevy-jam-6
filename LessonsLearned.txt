@@ -254,3 +254,13 @@ Copying enums
 
 enums cannot just be copied over by default, needed to add to enum:
 #[derive(Copy, Clone)]
+
+===
+
+Components inside components
+
+I added a field to Rune-Component that held an entire RuneEffect
+this way, each rune has a ready-made component attached to it
+Querying for RuneEffect does NOT yield the runes! because - my assumption - Queries only fetch entities by their direct components
+-> this allows a Component to hold structs that won't be considered for Queries, even if they can be used as Components too
+--> by deriving Copy/Clone, I can just add a copy of the pre-set to the affected entity, as a new Component; once that Component has played through it's effect, I can just remove it again to end the animation
