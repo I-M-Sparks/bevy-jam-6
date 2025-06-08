@@ -20,11 +20,11 @@ fn main() {
         .add_systems(Startup, setup_mvp_scene)
         // Input handling
         .add_systems(
-            Update,
+            PreUpdate,
             (move_picked_object, handle_pick_event, handle_release_event),
         )
         // Collision handling
-        .add_systems(Update, handle_collision_ball_with_ball_firing_thingy)
+        .add_systems(PostUpdate, handle_collision_ball_with_ball_firing_thingy)
         // Input forwarding
         .add_systems(FixedUpdate, controls)
         // Add colliders to sprites
@@ -98,10 +98,12 @@ fn setup_mvp_scene(
     commands.spawn((
         Rune,
         Pickable,
-        //FOR DEBUGGING
-        //Picked,
         Transform::from_xyz(-600.0, -300.0, RUNE_RENDER_LAYER),
         Sprite::from_image(asset_server.load("runes/PNG/Grey/Slab/runeGrey_slab_001.png")),
+        AddCollider {
+            collider_scale: 1.0,
+            collider_type: ColliderType::Rectangle,
+        },
     ));
 
     //spawn a second rune
@@ -110,6 +112,10 @@ fn setup_mvp_scene(
         Pickable,
         Transform::from_xyz(-540.0, -300.0, RUNE_RENDER_LAYER),
         Sprite::from_image(asset_server.load("runes/PNG/Grey/Slab/runeGrey_slab_002.png")),
+        AddCollider {
+            collider_scale: 1.0,
+            collider_type: ColliderType::Rectangle,
+        },
     ));
 
     /*
@@ -138,6 +144,7 @@ fn setup_mvp_scene(
         blue_ball_transform,
         AddCollider {
             collider_scale: 1.0,
+            collider_type: ColliderType::Circle,
         },
         Pickable,
         RigidBody::Kinematic,
@@ -196,6 +203,7 @@ fn setup_mvp_scene(
             ball_firing_thingy_transform,
             AddCollider {
                 collider_scale: 0.3,
+                collider_type: ColliderType::Circle,
             },
         ))
         .with_children(|parent| {
@@ -305,6 +313,10 @@ fn setup_mvp_scene(
                 Sprite::from_image(
                     asset_server.load("runes/PNG/Black/Slab/runeBlack_slab_036.png"),
                 ),
+                AddCollider {
+                    collider_scale: 0.7,
+                    collider_type: ColliderType::Rectangle,
+                },
             ));
         });
 
@@ -328,15 +340,29 @@ fn add_colliders(
             // make sure to remove Add Collider
             commands.entity(entity).remove::<AddCollider>();
 
-            // add collider
-            let collider_size = add_collider.collider_scale
-                * (calculate_sprite_size(&images, &sprite, &transform.scale).x * 0.5);
+            match add_collider.collider_type {
+                ColliderType::Circle => {
+                    // add circle collider
+                    let collider_size = add_collider.collider_scale
+                        * (calculate_sprite_size(&images, &sprite, &transform.scale).x * 0.5);
 
-            commands
-                .entity(entity)
-                .insert(Collider::circle(collider_size));
+                    commands
+                        .entity(entity)
+                        .insert(Collider::circle(collider_size));
 
-            debug!("Circle Collider created with size {}", collider_size);
+                    debug!("Circle Collider created with size {}", collider_size);
+                }
+                ColliderType::Rectangle => {
+                    let collider_size = add_collider.collider_scale
+                        * calculate_sprite_size(&images, &sprite, &transform.scale);
+
+                    commands
+                        .entity(entity)
+                        .insert(Collider::rectangle(collider_size.x, collider_size.y));
+
+                    debug!("Circle Collider created with size {}", collider_size);
+                }
+            }
         } else {
             trace!("Asset not yet loaded");
         }

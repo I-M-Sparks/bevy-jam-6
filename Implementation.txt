@@ -69,6 +69,17 @@ Next Steps:
 -get it running in a web browser (local) - DONE (bevy run web --open)
 -add license to git repo - DONE
 -upload to itch to go through the process - BLOCKED because itch.io is down
--complete the addition of physics so I can actually start implementing the puzzle(s)
--add puzzle(s)
+--follow up: DONE; how-to: build with 'bevy build web --bundle', then zip the folder containing the .html, and upload zip to itch.io-page
+--NOTE: remove unused assets before zipping / remove from project; itch.io has a file-size limit of 1GB AND a file count limit of 1000
+
+-complete the addition of physics so I can actually start implementing the puzzle(s) - DONE
+-add puzzle(s)- TODO
+
 ===
+
+Next Steps: 
+-add kinematic effect for runes (aka moving things when rune-effect is activated)
+-add collision-handling for blue_ball and runes
+-TBD: disable player input while machine is running & re-enable it when machine has stopped running 
+-add success/failure condition to machine
+-add win/lose contidtion (not quite the same as success/failure: success = win, but failure != lose, since player has multiple attempts)
