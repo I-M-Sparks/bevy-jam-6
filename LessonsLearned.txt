@@ -239,3 +239,18 @@ while placing runes in rune slots I ran into a small issue: the Rune-slots are a
 
 The solution was simple: query for the GlobalTransform of the Rune-Slot, not the Transform
 Note: should use this for Pick-detection, too
+
+===
+
+Accessing a parent entity
+
+there used to '&Parent' as a component to query, but not anymore (starting from 0.16 - thank you chat :) )
+
+the way to do it now is query &ChildOf
+
+===
+
+Copying enums
+
+enums cannot just be copied over by default, needed to add to enum:
+#[derive(Copy, Clone)]

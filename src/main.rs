@@ -1,7 +1,5 @@
-use std::{thread::sleep, time::Duration};
-
-use avian2d::{math, prelude::*};
-use bevy::{ecs::system::command, log::*, prelude::*};
+use avian2d::prelude::*;
+use bevy::{ecs::hierarchy, log::*, prelude::*};
 
 fn main() {
     App::new()
@@ -23,12 +21,15 @@ fn main() {
             PreUpdate,
             (move_picked_object, handle_pick_event, handle_release_event),
         )
+        // game logic
+        .add_systems(Update, apply_rune_effects)
         // Collision handling
         .add_systems(
             PostUpdate,
             (
                 handle_collision_ball_with_ball_firing_thingy,
                 handle_collision_rune_with_rune_slot,
+                handle_collision_blue_ball_and_runes,
             ),
         )
         // Input forwarding
@@ -108,6 +109,8 @@ fn setup_mvp_scene(
     commands.spawn((
         Rune {
             default_position: rune_default_position,
+            affected_entity: None,
+            rune_effect_type: RuneEffectType::MoveUp,
         },
         Pickable,
         Transform::from_xyz(
@@ -128,6 +131,8 @@ fn setup_mvp_scene(
     commands.spawn((
         Rune {
             default_position: rune_default_position,
+            affected_entity: None,
+            rune_effect_type: RuneEffectType::MoveLeft,
         },
         Pickable,
         Transform::from_xyz(
@@ -348,6 +353,12 @@ fn setup_mvp_scene(
 }
 
 /*
+========================================================================================
+Collision Handling
+========================================================================================
+ */
+
+/*
 Adjusts ball collider size
  */
 fn add_colliders(
@@ -392,12 +403,6 @@ fn add_colliders(
         }
     }
 }
-
-/*
-========================================================================================
-Collision Handling
-========================================================================================
- */
 
 /*
 Handle Collisions between the blue ball and the ball firing thingy (or thingies, if there are multiple)
@@ -491,17 +496,18 @@ Handles Collision between the placed rune and all rune slots
  */
 fn handle_collision_rune_with_rune_slot(
     // Execution condition
-    rune: Single<(Entity, &Rune, &mut Transform), With<Placed>>,
+    rune: Single<(Entity, &mut Rune, &mut Transform), With<Placed>>,
     // Globals
     mut commands: Commands,
     //Collisions
     collisions: Collisions,
     // Queries
-    rune_slots: Query<(&RuneSlot, &GlobalTransform), Without<Placed>>,
+    rune_slots: Query<(&RuneSlot, &GlobalTransform, &ChildOf), (Without<Placed>, Without<Rune>)>,
+    runes: Query<(&mut Rune, &mut Transform), (Without<RuneSlot>, Without<Placed>)>,
 ) {
     trace!("Handling potential collision between rune and rune slot");
 
-    let (rune_entity, rune, mut rune_transform) = rune.into_inner();
+    let (rune_entity, mut rune, mut rune_transform) = rune.into_inner();
 
     // remove placed immediately, regardless of actual collision
     commands.entity(rune_entity).remove::<Placed>();
@@ -509,6 +515,9 @@ fn handle_collision_rune_with_rune_slot(
     // place rune in it's default position; will be overwritten if a collision is detected
     rune_transform.translation.x = rune.default_position.x;
     rune_transform.translation.y = rune.default_position.y;
+
+    // check for rune that was replaced and reset it
+    let mut entity_replaced_rune: Option<Entity> = None;
 
     for contact_pair in collisions.iter() {
         /*
@@ -521,6 +530,8 @@ fn handle_collision_rune_with_rune_slot(
             && (rune_slots.contains(contact_pair.collider1)
                 || rune_slots.contains(contact_pair.collider2))
         {
+            trace!("Rune placed in rune slot, handling...");
+
             let entity_rune_slot: Entity;
 
             if contact_pair.collider1.eq(&rune_entity) {
@@ -541,11 +552,121 @@ fn handle_collision_rune_with_rune_slot(
             rune_transform.translation.x = rune_slot_translation.x;
             rune_transform.translation.y = rune_slot_translation.y;
 
-            // relevant collision was detected & handled -> interrupt the loop
+            rune.affected_entity = Some(rune_slots.get(entity_rune_slot).ok().unwrap().2.parent());
+
+            // check for a collision with another rune, and if there is one, place that rune back to it's default position
+            // TODO this could be improved by reducing the query to only runes that are placed in a slot
+            for contact_pair in collisions.iter() {
+                trace!("Rune was placed, checking for another rune that should be reset...");
+
+                if (contact_pair.collider1.eq(&rune_entity)
+                    || contact_pair.collider2.eq(&rune_entity))
+                    && (runes.contains(contact_pair.collider1)
+                        || runes.contains(contact_pair.collider2))
+                {
+                    trace!(
+                        "Rune was placed in slot that was already filled; resetting previous rune"
+                    );
+
+                    if contact_pair.collider1.eq(&rune_entity) {
+                        entity_replaced_rune = Some(contact_pair.collider2);
+                    } else {
+                        entity_replaced_rune = Some(contact_pair.collider1);
+                    }
+
+                    // replaced rune has been detected -> interrupt the loop
+                    // implicit assumption: there is only ever one rune-with-rune collision, because there is never more than one rune inside a slot and slots dont' overlap
+                    break;
+                }
+            }
+
+            // relevant collision (rune with rune slot) was detected & handled -> interrupt the loop
+            break;
+        }
+    }
+
+    // condition: if replaced rune option was found
+    if let Some(entity_replaced_rune) = entity_replaced_rune {
+        let (mut replaced_rune, mut replaced_rune_transform) =
+            runes.get_inner(entity_replaced_rune).ok().unwrap();
+
+        replaced_rune_transform.translation.x = replaced_rune.default_position.x;
+        replaced_rune_transform.translation.y = replaced_rune.default_position.y;
+
+        replaced_rune.affected_entity = None;
+    }
+}
+
+/*
+Handles collisions between Blue Ball and Runes
+ */
+fn handle_collision_blue_ball_and_runes(
+    // Execution condition
+    blue_ball: Single<(Entity, &BlueBall), Without<Pickable>>,
+    // Globals
+    mut commands: Commands,
+    //Collisions
+    collisions: Collisions,
+    // Queries
+    runes: Query<&Rune>,
+) {
+    trace!("Handling potential collision between rune and blue ball");
+
+    for contact_pair in collisions.iter() {
+        if (contact_pair.collider1.eq(&blue_ball.0) || contact_pair.collider2.eq(&blue_ball.0))
+            && (runes.contains(contact_pair.collider1) || runes.contains(contact_pair.collider2))
+        {
+            trace!("Handling collision between blue ball and rune");
+
+            commands.entity(blue_ball.0).despawn();
+
+            // mark rune as activated
+            if contact_pair.collider1.eq(&blue_ball.0) {
+                commands
+                    .entity(
+                        runes
+                            .get(contact_pair.collider2)
+                            .ok()
+                            .unwrap()
+                            .affected_entity
+                            .unwrap(),
+                    )
+                    .insert(RuneEffect {
+                        rune_effect_type: runes
+                            .get(contact_pair.collider2)
+                            .ok()
+                            .unwrap()
+                            .rune_effect_type,
+                    });
+            } else {
+                commands
+                    .entity(
+                        runes
+                            .get(contact_pair.collider1)
+                            .ok()
+                            .unwrap()
+                            .affected_entity
+                            .unwrap(),
+                    )
+                    .insert(RuneEffect {
+                        rune_effect_type: runes
+                            .get(contact_pair.collider1)
+                            .ok()
+                            .unwrap()
+                            .rune_effect_type,
+                    });
+            }
+
             break;
         }
     }
 }
+
+/*
+========================================================================================
+Input Handling
+========================================================================================
+ */
 
 /*
 Queries the currently moved object and moves it to the cursor position
@@ -708,12 +829,16 @@ fn handle_release_event(
 }
 
 fn controls(
+    // Execution conditions
+    player_single: Single<Entity, With<Player>>,
+    _blue_ball: Single<&BlueBall, With<Pickable>>,
+    //Globals
     mut commands: Commands,
     input: Res<ButtonInput<MouseButton>>,
     mut release_event_writer: EventWriter<ReleaseEvent>,
     mut pick_event_writer: EventWriter<PickEvent>,
+    // Queries
     windows: Query<&Window>,
-    player_single: Single<Entity, With<Player>>,
 ) {
     let player_entity = player_single.into_inner();
 
@@ -758,6 +883,33 @@ fn controls(
 
 /*
 ========================================================================================
+Game Logic
+========================================================================================
+ */
+fn apply_rune_effects(active_entities: Query<&RuneEffect>) {
+    for rune_effect in active_entities {
+        // TODO actually do things here
+        trace!("animating rune effect");
+
+        match rune_effect.rune_effect_type {
+            RuneEffectType::MoveUp => {
+                trace!("rune effect is moving Up");
+            }
+            RuneEffectType::MoveDown => {
+                trace!("rune effect is moving Down");
+            }
+            RuneEffectType::MoveLeft => {
+                trace!("rune effect is moving Left");
+            }
+            RuneEffectType::MoveRight => {
+                trace!("rune effect is moving Right");
+            }
+        }
+    }
+}
+
+/*
+========================================================================================
 Components
 ========================================================================================
  */
@@ -767,6 +919,8 @@ Components
 #[derive(Component)]
 struct Rune {
     default_position: Vec2,
+    affected_entity: Option<Entity>,
+    rune_effect_type: RuneEffectType,
 }
 
 /*
@@ -832,6 +986,11 @@ struct BallFiringThingy {
 struct RuneSlot;
 
 #[derive(Component)]
+struct RuneEffect {
+    rune_effect_type: RuneEffectType,
+}
+
+#[derive(Component)]
 struct Placed;
 
 #[derive(Component)]
@@ -866,4 +1025,12 @@ Enums
 pub enum ColliderType {
     Circle,
     Rectangle,
+}
+
+#[derive(Copy, Clone)]
+pub enum RuneEffectType {
+    MoveUp,
+    MoveDown,
+    MoveLeft,
+    MoveRight,
 }
