@@ -78,8 +78,10 @@ Next Steps:
 ===
 
 Next Steps: 
--add kinematic effect for runes (aka moving things when rune-effect is activated)
--add collision-handling for blue_ball and runes
--TBD: disable player input while machine is running & re-enable it when machine has stopped running 
--add success/failure condition to machine
--add win/lose contidtion (not quite the same as success/failure: success = win, but failure != lose, since player has multiple attempts)
+-make it possible to replace runes with eacvh other ibnstead of stacking them - DONE
+-add collision-handling for blue_ball and runes- DONE
+-add kinematic effect for runes (aka moving things when rune-effect is activated)- - CHANGED, not using physics for animation, doing custom effect animation instad
+-disable player input while machine is running - DONE
+--& re-enable it when machine has stopped running - TODO
+-add success/failure condition to machine - TODO
+-add win/lose contidtion (not quite the same as success/failure: success = win, but failure != lose, since player has multiple attempts) - TODO
