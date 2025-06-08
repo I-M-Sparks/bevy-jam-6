@@ -231,3 +231,11 @@ PSEUDO CODE
 linear_velocity.0 = <Vec2 in avian2d>
 
 ===
+
+Transforms of Child entities
+
+while placing runes in rune slots I ran into a small issue: the Rune-slots are attached to other entities, so their transform is relative to their parent
+-> using the transform to place the rune slot resulted in a wrong translation
+
+The solution was simple: query for the GlobalTransform of the Rune-Slot, not the Transform
+Note: should use this for Pick-detection, too

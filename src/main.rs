@@ -338,7 +338,7 @@ fn setup_mvp_scene(
                     asset_server.load("runes/PNG/Black/Slab/runeBlack_slab_036.png"),
                 ),
                 AddCollider {
-                    collider_scale: 0.7,
+                    collider_scale: 0.5,
                     collider_type: ColliderType::Rectangle,
                 },
             ));
@@ -497,7 +497,7 @@ fn handle_collision_rune_with_rune_slot(
     //Collisions
     collisions: Collisions,
     // Queries
-    rune_slots: Query<(&RuneSlot, &Transform), Without<Placed>>,
+    rune_slots: Query<(&RuneSlot, &GlobalTransform), Without<Placed>>,
 ) {
     trace!("Handling potential collision between rune and rune slot");
 
@@ -529,13 +529,17 @@ fn handle_collision_rune_with_rune_slot(
                 entity_rune_slot = contact_pair.collider1;
             }
 
-            commands.entity(entity_rune_slot).add_child(rune_entity);
-            // rune is now child of rune_slot, so transform will be relative to rune_slot; using ZERO will place the rune at the center
-            rune_transform.translation = Vec3::ZERO;
-            // need z to be above 0.0 to ensure the Rune is oin a higher Render Layer
-            rune_transform.translation.z = 1.0;
-            // need to invert the scale of the rune slot, otherwhise the rune is scaled by the same factor as the rune_slot
-            rune_transform.scale = 1.0 / rune_slots.get(entity_rune_slot).ok().unwrap().1.scale;
+            // move rune into rune-slot
+            // TODO consider rotation
+            let rune_slot_translation = rune_slots
+                .get(entity_rune_slot)
+                .ok()
+                .unwrap()
+                .1
+                .translation();
+
+            rune_transform.translation.x = rune_slot_translation.x;
+            rune_transform.translation.y = rune_slot_translation.y;
 
             // relevant collision was detected & handled -> interrupt the loop
             break;
