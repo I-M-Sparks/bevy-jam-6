@@ -13,7 +13,7 @@ fn main() {
         // length unit 100 => 1m = 1 pixels.
         .add_plugins(PhysicsPlugins::default().with_length_unit(1.0))
         // Debug physics
-        .add_plugins(PhysicsDebugPlugin::default())
+        //.add_plugins(PhysicsDebugPlugin::default())
         // Startup
         .add_systems(Startup, setup_mvp_scene)
         // Input handling
@@ -243,7 +243,7 @@ fn setup_mvp_scene(
     let grey_ball_sprite =
         Sprite::from_image(asset_server.load("Puzzle Assets/PNG/Double/ballGrey.png"));
 
-    let mut grey_ball_default_position = Vec2::new(300.0, -296.0);
+    let mut grey_ball_default_position = Vec2::new(350.0, -296.0);
 
     render_layer = BALL_RENDER_LAYER;
 
@@ -268,7 +268,7 @@ fn setup_mvp_scene(
         RigidBody::Kinematic,
     ));
 
-    grey_ball_default_position = Vec2::new(350.0, -296.0);
+    grey_ball_default_position = Vec2::new(450.0, -296.0);
 
     commands.spawn((
         GreyBall {
@@ -291,7 +291,7 @@ fn setup_mvp_scene(
         RigidBody::Kinematic,
     ));
 
-    grey_ball_default_position = Vec2::new(400.0, -296.0);
+    grey_ball_default_position = Vec2::new(550.0, -296.0);
 
     commands.spawn((
         GreyBall {
@@ -596,6 +596,22 @@ fn setup_mvp_scene(
             collider_type: ColliderType::Rectangle,
         },
         trigger_star_sprite.clone(),
+    ));
+
+    /*
+    =========================================================================================================
+    spawn connectors
+    =========================================================================================================
+     */
+    let mut connector_sprite = Sprite::from_color(MAGICAL_BLUE, Vec2::new(880.0, 10.0));
+    commands.spawn((
+        Transform::from_xyz(-120.0, 320.0, BACKGROUND_RENDER_LAYER),
+        connector_sprite.clone(),
+    ));
+    connector_sprite.custom_size = Some(Vec2::new(10.0, 380.0));
+    commands.spawn((
+        Transform::from_xyz(-555.0, 130.0, BACKGROUND_RENDER_LAYER),
+        connector_sprite.clone(),
     ));
 
     info!("Game Start");
