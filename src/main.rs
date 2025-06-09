@@ -24,7 +24,12 @@ fn main() {
         // Input handling
         .add_systems(
             PreUpdate,
-            (move_picked_object, handle_pick_event, handle_release_event),
+            (
+                handle_event_mouse_move,
+                handle_event_pick,
+                handle_event_release,
+                handle_event_trigger_star_activated,
+            ),
         )
         // game logic
         .add_systems(Update, apply_rune_effects)
@@ -45,6 +50,7 @@ fn main() {
         //Events
         .add_event::<PickEvent>()
         .add_event::<ReleaseEvent>()
+        .add_event::<TriggerStarActivatedEvent>()
         // Run
         .run();
 }
@@ -77,7 +83,7 @@ const BALL_RENDER_LAYER: f32 = 101.0;
 
 // COLORS
 
-const MAGICAL_BLUE: Color = Color::LinearRgba(LinearRgba::rgb(0.5, 0.5, 1.0));
+const MAGICAL_BLUE: Color = Color::LinearRgba(LinearRgba::rgb(0.3, 0.3, 1.0));
 const DONUT_CIRCLE_RED: Color = Color::LinearRgba(LinearRgba::rgb(1.0, 0.2, 0.2));
 const BURN_OUT_BLACK: Color = Color::LinearRgba(LinearRgba::rgb(0.3, 0.1, 0.1));
 
@@ -327,62 +333,16 @@ fn setup_mvp_scene(
 
     render_layer = DONUT_CIRCLE_RENDER_LAYER;
 
-    commands.spawn((
-        DonutCircle,
-        Transform::from_xyz(0.0, -280.0, render_layer),
-        RenderLayer {
-            render_layer: render_layer,
-        },
-        donut_circle_sprite,
-    ));
-    /*
-       // spawn target donut base
-       let mut donut_base_sprite = Sprite::from_image(asset_server.load("Donuts/PNG/donut_1.png"));
-       donut_base_sprite.custom_size = Some(Vec2::new(80.0, 80.0));
-
-       render_layer = DONUT_BASE_RENDER_LAYER;
-
-       commands.spawn((
-           DonutCircle,
-           Transform::from_xyz(540.0, 260.0, render_layer),
-           RenderLayer {
-               render_layer: render_layer,
-           },
-           donut_base_sprite,
-       ));
-
-       // spawn target donut frosting
-       let mut donut_frosting_sprite =
-           Sprite::from_image(asset_server.load("Donuts/PNG/glazing_5.png"));
-       donut_frosting_sprite.custom_size = Some(Vec2::new(70.0, 70.0));
-
-       render_layer = DONUT_FROSTING_RENDER_LAYER;
-
-       commands.spawn((
-           DonutCircle,
-           Transform::from_xyz(540.0, 260.0, render_layer),
-           RenderLayer {
-               render_layer: render_layer,
-           },
-           donut_frosting_sprite,
-       ));
-
-       // spawn target donut sprinkles
-       let mut donut_sprinkles_sprite =
-           Sprite::from_image(asset_server.load("Donuts/PNG/sprinkles_1.png"));
-       donut_sprinkles_sprite.custom_size = Some(Vec2::new(70.0, 70.0));
-
-       render_layer = DONUT_SPRINKLES_RENDER_LAYER;
-
-       commands.spawn((
-           DonutCircle,
-           Transform::from_xyz(540.0, 260.0, render_layer),
-           RenderLayer {
-               render_layer: render_layer,
-           },
-           donut_sprinkles_sprite,
-       ));
-    */
+    let magic_cirlce_entity = commands
+        .spawn((
+            DonutCircle,
+            Transform::from_xyz(0.0, -280.0, render_layer),
+            RenderLayer {
+                render_layer: render_layer,
+            },
+            donut_circle_sprite,
+        ))
+        .id();
 
     /*
     =========================================================================================================
@@ -434,6 +394,21 @@ fn setup_mvp_scene(
     let rune_slot_render_layer: f32 = RUNE_SLOT_RENDER_LAYER - render_layer;
 
     //spawn ace of hearts
+    let card_rune_slot = commands
+        .spawn((
+            RuneSlot,
+            Transform::from_xyz(0.0, 0.0, rune_slot_render_layer).with_scale(Vec3::splat(1.3)),
+            RenderLayer {
+                render_layer: RUNE_SLOT_RENDER_LAYER,
+            },
+            Sprite::from_image(asset_server.load("runes/PNG/Black/Slab/runeBlack_slab_036.png")),
+            AddCollider {
+                collider_scale: 0.5,
+                collider_type: ColliderType::Rectangle,
+            },
+        ))
+        .id();
+
     commands
         .spawn((
             Card,
@@ -447,23 +422,88 @@ fn setup_mvp_scene(
                 collider_type: ColliderType::Rectangle,
             },
         ))
-        .with_children(|parent| {
-            // spawn rune slot
-            parent.spawn((
-                RuneSlot,
-                Transform::from_xyz(0.0, 0.0, rune_slot_render_layer).with_scale(Vec3::splat(1.3)),
-                RenderLayer {
-                    render_layer: RUNE_SLOT_RENDER_LAYER,
-                },
-                Sprite::from_image(
-                    asset_server.load("runes/PNG/Black/Slab/runeBlack_slab_036.png"),
-                ),
-                AddCollider {
-                    collider_scale: 0.5,
-                    collider_type: ColliderType::Rectangle,
-                },
-            ));
-        });
+        .add_child(card_rune_slot);
+
+    /*
+    =========================================================================================================
+    Spawn Letters
+    =========================================================================================================
+     */
+
+    let letter_rune_slot_entity = commands
+        .spawn((
+            RuneSlot,
+            Transform::from_xyz(-50.0, 0.0, rune_slot_render_layer).with_scale(Vec3::splat(1.3)),
+            RenderLayer {
+                render_layer: RUNE_SLOT_RENDER_LAYER,
+            },
+            Sprite::from_image(asset_server.load("runes/PNG/Black/Slab/runeBlack_slab_036.png")),
+            AddCollider {
+                collider_scale: 0.5,
+                collider_type: ColliderType::Rectangle,
+            },
+        ))
+        .id();
+
+    let mut letter_sprite =
+        Sprite::from_image(asset_server.load("letters/Letter Tiles Redux/PNG/StyleH/tileD.png"));
+    letter_sprite.custom_size = Some(Vec2::new(100.0, 100.0));
+
+    commands
+        .spawn((
+            letter_sprite,
+            RenderLayer { render_layer },
+            Transform::from_xyz(-500.0, -50.0, render_layer),
+            AddCollider {
+                collider_scale: 1.0,
+                collider_type: ColliderType::Rectangle,
+            },
+        ))
+        .add_child(letter_rune_slot_entity);
+
+    // spawn O
+    letter_sprite =
+        Sprite::from_image(asset_server.load("letters/Letter Tiles Redux/PNG/StyleH/tileO.png"));
+    letter_sprite.custom_size = Some(Vec2::new(100.0, 100.0));
+
+    commands.spawn((
+        letter_sprite,
+        RenderLayer { render_layer },
+        Transform::from_xyz(-200.0, -50.0, render_layer),
+    ));
+
+    // spawn N
+    letter_sprite =
+        Sprite::from_image(asset_server.load("letters/Letter Tiles Redux/PNG/StyleH/tileN.png"));
+    letter_sprite.custom_size = Some(Vec2::new(100.0, 100.0));
+
+    commands.spawn((
+        letter_sprite,
+        RenderLayer { render_layer },
+        Transform::from_xyz(-90.0, -50.0, render_layer),
+    ));
+
+    // spawn U
+    letter_sprite =
+        Sprite::from_image(asset_server.load("letters/Letter Tiles Redux/PNG/StyleH/tileU.png"));
+    letter_sprite.custom_size = Some(Vec2::new(100.0, 100.0));
+
+    commands.spawn((
+        letter_sprite,
+        RenderLayer { render_layer },
+        Transform::from_xyz(20.0, -50.0, render_layer),
+    ));
+
+    // spawn T
+    letter_sprite =
+        Sprite::from_image(asset_server.load("letters/Letter Tiles Redux/PNG/StyleH/tileT.png"));
+    letter_sprite.custom_size = Some(Vec2::new(100.0, 100.0));
+
+    commands.spawn((
+        letter_sprite,
+        RenderLayer { render_layer },
+        Transform::from_xyz(130.0, -50.0, render_layer),
+    ));
 
     /*
     =========================================================================================================
@@ -476,7 +516,9 @@ fn setup_mvp_scene(
 
     // spawn star for cards
     commands.spawn((
-        TriggerStar,
+        TriggerStar {
+            follow_up_entity: letter_rune_slot_entity,
+        },
         Transform::from_xyz(350.0, 320.0, render_layer),
         RenderLayer {
             render_layer: render_layer,
@@ -490,8 +532,10 @@ fn setup_mvp_scene(
 
     // spawn star for letters
     commands.spawn((
-        TriggerStar,
-        Transform::from_xyz(-230.0, -70.0, render_layer),
+        TriggerStar {
+            follow_up_entity: magic_cirlce_entity,
+        },
+        Transform::from_xyz(-230.0, -120.0, render_layer),
         RenderLayer {
             render_layer: render_layer,
         },
@@ -500,88 +544,6 @@ fn setup_mvp_scene(
             collider_type: ColliderType::Rectangle,
         },
         trigger_star_sprite.clone(),
-    ));
-
-    /*
-    =========================================================================================================
-    Spawn Letters
-    =========================================================================================================
-     */
-    let mut letter_sprite =
-        Sprite::from_image(asset_server.load("letters/Letter Tiles Redux/PNG/StyleH/tileD.png"));
-    letter_sprite.custom_size = Some(Vec2::new(100.0, 100.0));
-
-    commands
-        .spawn((
-            letter_sprite,
-            RenderLayer { render_layer },
-            Transform::from_xyz(-500.0, 0.0, render_layer),
-            AddCollider {
-                collider_scale: 1.0,
-                collider_type: ColliderType::Rectangle,
-            },
-        ))
-        .with_children(|parent| {
-            // spawn rune slot
-            parent.spawn((
-                RuneSlot,
-                Transform::from_xyz(-50.0, 0.0, rune_slot_render_layer)
-                    .with_scale(Vec3::splat(1.3)),
-                RenderLayer {
-                    render_layer: RUNE_SLOT_RENDER_LAYER,
-                },
-                Sprite::from_image(
-                    asset_server.load("runes/PNG/Black/Slab/runeBlack_slab_036.png"),
-                ),
-                AddCollider {
-                    collider_scale: 0.5,
-                    collider_type: ColliderType::Rectangle,
-                },
-            ));
-        });
-
-    // spawn O
-    letter_sprite =
-        Sprite::from_image(asset_server.load("letters/Letter Tiles Redux/PNG/StyleH/tileO.png"));
-    letter_sprite.custom_size = Some(Vec2::new(100.0, 100.0));
-
-    commands.spawn((
-        letter_sprite,
-        RenderLayer { render_layer },
-        Transform::from_xyz(-200.0, 0.0, render_layer),
-    ));
-
-    // spawn N
-    letter_sprite =
-        Sprite::from_image(asset_server.load("letters/Letter Tiles Redux/PNG/StyleH/tileN.png"));
-    letter_sprite.custom_size = Some(Vec2::new(100.0, 100.0));
-
-    commands.spawn((
-        letter_sprite,
-        RenderLayer { render_layer },
-        Transform::from_xyz(-90.0, 0.0, render_layer),
-    ));
-
-    // spawn U
-    letter_sprite =
-        Sprite::from_image(asset_server.load("letters/Letter Tiles Redux/PNG/StyleH/tileU.png"));
-    letter_sprite.custom_size = Some(Vec2::new(100.0, 100.0));
-
-    commands.spawn((
-        letter_sprite,
-        RenderLayer { render_layer },
-        Transform::from_xyz(20.0, 0.0, render_layer),
-    ));
-
-    // spawn T
-    letter_sprite =
-        Sprite::from_image(asset_server.load("letters/Letter Tiles Redux/PNG/StyleH/tileT.png"));
-    letter_sprite.custom_size = Some(Vec2::new(100.0, 100.0));
-
-    commands.spawn((
-        letter_sprite,
-        RenderLayer { render_layer },
-        Transform::from_xyz(130.0, 0.0, render_layer),
     ));
 
     info!("Setup completed");
@@ -904,6 +866,7 @@ fn handle_collision_rune_effect_with_trigger_star(
     _player: Single<&Player, With<PlayerWaitingForMachine>>,
     // Globals
     mut commands: Commands,
+    mut trigger_event_writer: EventWriter<TriggerStarActivatedEvent>,
     //Collisions
     collisions: Collisions,
     // Queries
@@ -993,7 +956,10 @@ fn handle_collision_rune_effect_with_trigger_star(
         // paint trigger star blue
         trigger_star.2.color = MAGICAL_BLUE;
 
-        // TODO trigger follow up mechanic
+        // trigger follow up mechanic
+        trigger_event_writer.write(TriggerStarActivatedEvent {
+            entity_to_be_triggered: trigger_star.1.follow_up_entity,
+        });
     }
 
     // handle deactivation of affected entity
@@ -1028,7 +994,7 @@ Input Handling
 /*
 Queries the currently moved object and moves it to the cursor position
  */
-fn move_picked_object(
+fn handle_event_mouse_move(
     // Execution Conditions
     picked: Single<&mut Transform, With<Picked>>,
     // Globals
@@ -1083,9 +1049,9 @@ fn calculate_sprite_size(images: &Res<Assets<Image>>, sprite: &Sprite, scale: &V
 /*
 Handles whichever action caused a Pick-Event
  */
-fn handle_pick_event(
+fn handle_event_pick(
     //excution conditions
-    player_single: Single<Entity, (With<PlayerCanPick>, With<PlayerAttemptsPick>)>,
+    player_single: Single<Entity, With<PlayerAttemptsPick>>,
     //Globals
     mut commands: Commands,
     images: Res<Assets<Image>>,
@@ -1175,7 +1141,7 @@ Handles the release of whichever Action caused a previous pick event
 
 Release event is ignored if no Picked object was found
  */
-fn handle_release_event(
+fn handle_event_release(
     // Execution conditions
     player_single: Single<Entity, (With<Player>, With<PlayerAttemptsRelease>)>,
     // Globals
@@ -1201,14 +1167,6 @@ fn handle_release_event(
         // "drop" the Pickable by removing the Picked-component
         commands.entity(picked_entity).remove::<Picked>();
         commands.entity(picked_entity).insert(Placed);
-
-        //assumption: whatever object was picked has been moved to wherever the cursor had been
-        //-> the objects transform is ready for further usage
-
-        // TODO check for overlap between picked entity and potential slot -> how to best do this?
-        // read screen-position from event
-        // translate to world position
-        // check for overlap with all 'slot' entities
     }
 }
 
@@ -1263,6 +1221,136 @@ fn controls(
          trace!("Right release")
      }
     */
+}
+
+/*
+========================================================================================
+Event Handling
+========================================================================================
+ */
+
+/*
+Handles Event written when TriggerStars are activated
+ */
+fn handle_event_trigger_star_activated(
+    // Execution conditions
+    _player_single: Single<
+        Entity,
+        (
+            With<Player>,
+            With<PlayerWaitingForMachine>,
+            Without<DonutCircle>,
+            Without<RuneSlot>,
+            Without<Rune>,
+        ),
+    >,
+    // Globals
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut trigger_event_reader: EventReader<TriggerStarActivatedEvent>,
+    // Queries
+    magic_donut_circle: Single<
+        (Entity, &DonutCircle, &Transform),
+        (Without<Player>, Without<RuneSlot>, Without<Rune>),
+    >,
+    rune_slots: Query<
+        (&ChildOf, &Children),
+        (
+            With<RuneSlot>,
+            Without<Player>,
+            Without<DonutCircle>,
+            Without<Rune>,
+        ),
+    >,
+    runes: Query<(Entity, &Rune), (Without<Player>, Without<DonutCircle>, Without<RuneSlot>)>,
+) {
+    // if the next effect is the rune circle -> summon donut and be happy
+    for trigger_event in trigger_event_reader.read() {
+        // handle activation of donut cirle
+        if trigger_event
+            .entity_to_be_triggered
+            .eq(&magic_donut_circle.0)
+        {
+            // spawn donut base
+            let mut donut_base_sprite =
+                Sprite::from_image(asset_server.load("Donuts/PNG/donut_1.png"));
+            donut_base_sprite.custom_size = Some(Vec2::new(80.0, 80.0));
+
+            let mut render_layer = DONUT_BASE_RENDER_LAYER;
+
+            commands.spawn((
+                DonutCircle,
+                Transform::from_xyz(
+                    magic_donut_circle.2.translation.x,
+                    magic_donut_circle.2.translation.y,
+                    render_layer,
+                ),
+                RenderLayer {
+                    render_layer: render_layer,
+                },
+                donut_base_sprite,
+            ));
+
+            // spawn donut frosting
+            let mut donut_frosting_sprite =
+                Sprite::from_image(asset_server.load("Donuts/PNG/glazing_5.png"));
+            donut_frosting_sprite.custom_size = Some(Vec2::new(70.0, 70.0));
+
+            render_layer = DONUT_FROSTING_RENDER_LAYER;
+
+            commands.spawn((
+                DonutCircle,
+                Transform::from_xyz(
+                    magic_donut_circle.2.translation.x,
+                    magic_donut_circle.2.translation.y,
+                    render_layer,
+                ),
+                RenderLayer {
+                    render_layer: render_layer,
+                },
+                donut_frosting_sprite,
+            ));
+
+            // spawn donut sprinkles
+            let mut donut_sprinkles_sprite =
+                Sprite::from_image(asset_server.load("Donuts/PNG/sprinkles_1.png"));
+            donut_sprinkles_sprite.custom_size = Some(Vec2::new(70.0, 70.0));
+
+            render_layer = DONUT_SPRINKLES_RENDER_LAYER;
+
+            commands.spawn((
+                DonutCircle,
+                Transform::from_xyz(
+                    magic_donut_circle.2.translation.x,
+                    magic_donut_circle.2.translation.y,
+                    render_layer,
+                ),
+                RenderLayer {
+                    render_layer: render_layer,
+                },
+                donut_sprinkles_sprite,
+            ));
+
+            info!("Congratulations!");
+            break;
+        }
+
+        // handle activation of rune-slot
+        let rune_slot = rune_slots
+            .get(trigger_event.entity_to_be_triggered)
+            .ok()
+            .unwrap();
+
+        // find rune in query that is child of rune slot
+        for child in rune_slot.1 {
+            if runes.contains(*child) {
+                commands
+                    .entity(rune_slot.0.0)
+                    .insert(runes.get(*child).ok().unwrap().1.rune_effect.clone());
+                break;
+            }
+        }
+    }
 }
 
 /*
@@ -1406,8 +1494,13 @@ struct AddCollider {
     collider_type: ColliderType,
 }
 
+/*
+Store which entity to trigger when the star is activated
+ */
 #[derive(Component)]
-struct TriggerStar;
+struct TriggerStar {
+    follow_up_entity: Entity,
+}
 
 /*
 ========================================================================================
@@ -1425,6 +1518,16 @@ struct PickEvent {
 struct ReleaseEvent {
     // screen coordinates means (0,0) to (window_width, window_height); from top-left to bottom-right
     _location_in_screen_coordinates: Vec2,
+}
+
+/*
+Event is triggered when a Trigger Star is activated
+
+Stores the entity-id of the rune-slot to be activated next OR the entity id of the holy circle of donut spawning
+ */
+#[derive(Event)]
+struct TriggerStarActivatedEvent {
+    entity_to_be_triggered: Entity,
 }
 
 /*
