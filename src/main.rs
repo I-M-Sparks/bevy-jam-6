@@ -1,13 +1,5 @@
 use avian2d::prelude::*;
-use bevy::{
-    ecs::{
-        event, hierarchy,
-        system::command::{self, trigger},
-    },
-    log::*,
-    prelude::*,
-    render::extract_component::ExtractComponent,
-};
+use bevy::{log::*, prelude::*};
 
 fn main() {
     App::new()
@@ -317,6 +309,7 @@ fn setup_mvp_scene(
             collider_type: ColliderType::Circle,
         },
         RigidBody::Kinematic,
+        RenderLayer { render_layer },
     ));
 
     // Ball firing Thingy
