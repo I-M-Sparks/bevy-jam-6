@@ -95,6 +95,6 @@ Next Steps:
 
 Bugs:
 -runes are not reset properly - FIXED
--one of the grey balls can't be picked up for some reason
+-one of the grey balls can't be picked up for some reason - FIXED; RenderLayer component was missing and it's queried in the pick handling
 
 ===
