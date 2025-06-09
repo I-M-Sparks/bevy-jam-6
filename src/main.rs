@@ -1,6 +1,9 @@
 use avian2d::prelude::*;
 use bevy::{
-    ecs::{hierarchy, system::command::trigger},
+    ecs::{
+        hierarchy,
+        system::command::{self, trigger},
+    },
     log::*,
     prelude::*,
     render::extract_component::ExtractComponent,
@@ -29,6 +32,7 @@ fn main() {
                 handle_event_pick,
                 handle_event_release,
                 handle_event_trigger_star_activated,
+                handle_event_machine_failed,
             ),
         )
         // game logic
@@ -51,6 +55,7 @@ fn main() {
         .add_event::<PickEvent>()
         .add_event::<ReleaseEvent>()
         .add_event::<TriggerStarActivatedEvent>()
+        .add_event::<MachineFailedEvent>()
         // Run
         .run();
 }
@@ -66,6 +71,7 @@ Constants
 
 // RENDER LAYERS
 const BACKGROUND_RENDER_LAYER: f32 = 0.0;
+const RUNE_EXPLANATION_LAYER: f32 = 1.0;
 
 const RUNE_MACHINE_RENDER_LAYER: f32 = 50.0;
 // Rune-slots are child-entities of rune machine parts, so they are rendered on top of them
@@ -118,7 +124,7 @@ fn setup_mvp_scene(
 
     /*
     =========================================================================================================
-    spawn runes
+    spawn runes & their explanations
     =========================================================================================================
      */
     let mut render_layer = RUNE_RENDER_LAYER;
@@ -127,7 +133,7 @@ fn setup_mvp_scene(
 
     rune_default_position = Vec2::new(-595.0, -290.0);
 
-    //spawn a rune
+    //spawn upward movement rune
     commands.spawn((
         Rune {
             default_position: rune_default_position,
@@ -153,9 +159,23 @@ fn setup_mvp_scene(
         },
     ));
 
+    render_layer = RUNE_EXPLANATION_LAYER;
+
+    // spawn upward movement rune explanation
+    commands.spawn((
+        Transform::from_xyz(
+            rune_default_position.x,
+            rune_default_position.y,
+            render_layer,
+        ),
+        Sprite::from_image(asset_server.load("Ui Pack/PNG/Blue/Double/arrow_decorative_n.png")),
+        RenderLayer { render_layer },
+    ));
+
+    render_layer = RUNE_RENDER_LAYER;
     rune_default_position = Vec2::new(-535.0, -290.0);
 
-    //spawn a second rune
+    //spawn right movement rune
     commands.spawn((
         Rune {
             default_position: rune_default_position,
@@ -179,6 +199,19 @@ fn setup_mvp_scene(
             collider_scale: 1.0,
             collider_type: ColliderType::Rectangle,
         },
+    ));
+
+    // spawn right movement rune explanation
+    render_layer = RUNE_EXPLANATION_LAYER;
+
+    commands.spawn((
+        Transform::from_xyz(
+            rune_default_position.x,
+            rune_default_position.y,
+            render_layer,
+        ),
+        Sprite::from_image(asset_server.load("Ui Pack/PNG/Blue/Double/arrow_decorative_e.png")),
+        RenderLayer { render_layer },
     ));
 
     /*
@@ -285,7 +318,7 @@ fn setup_mvp_scene(
 
     // Ball firing Thingy
     let ball_firing_thingy_sprite = Sprite::from_image(
-        asset_server.load("UI Pack/PNG/Grey/Double/check_round_grey_circle.png"),
+        asset_server.load("UI Pack/PNG/Blue/Double/check_round_round_circle.png"),
     );
 
     render_layer = BALL_FIRING_THINGY_RENDER_LAYER;
@@ -1234,7 +1267,7 @@ Handles Event written when TriggerStars are activated
  */
 fn handle_event_trigger_star_activated(
     // Execution conditions
-    _player_single: Single<
+    player_single: Single<
         Entity,
         (
             With<Player>,
@@ -1248,6 +1281,7 @@ fn handle_event_trigger_star_activated(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut trigger_event_reader: EventReader<TriggerStarActivatedEvent>,
+    mut machine_failed_write: EventWriter<MachineFailedEvent>,
     // Queries
     magic_donut_circle: Single<
         (Entity, &DonutCircle, &Transform),
@@ -1266,11 +1300,17 @@ fn handle_event_trigger_star_activated(
 ) {
     // if the next effect is the rune circle -> summon donut and be happy
     for trigger_event in trigger_event_reader.read() {
+        let mut trigger_handled: bool = false;
+
         // handle activation of donut cirle
         if trigger_event
             .entity_to_be_triggered
             .eq(&magic_donut_circle.0)
         {
+            commands
+                .entity(player_single.entity())
+                .remove::<PlayerWaitingForMachine>();
+
             // spawn donut base
             let mut donut_base_sprite =
                 Sprite::from_image(asset_server.load("Donuts/PNG/donut_1.png"));
@@ -1332,25 +1372,55 @@ fn handle_event_trigger_star_activated(
             ));
 
             info!("Congratulations!");
+            // game is completed - ignore any other events
+            trigger_handled = true; // <-- this should not have any effect, since we hit break after this. but hey, better safe than sorry
             break;
         }
 
         // handle activation of rune-slot
-        let rune_slot = rune_slots
-            .get(trigger_event.entity_to_be_triggered)
-            .ok()
-            .unwrap();
-
-        // find rune in query that is child of rune slot
-        for child in rune_slot.1 {
-            if runes.contains(*child) {
-                commands
-                    .entity(rune_slot.0.0)
-                    .insert(runes.get(*child).ok().unwrap().1.rune_effect.clone());
-                break;
+        if rune_slots.get(trigger_event.entity_to_be_triggered).is_ok() {
+            if let Some(rune_slot) = rune_slots.get(trigger_event.entity_to_be_triggered).ok() {
+                // find rune in query that is child of rune slot
+                for child in rune_slot.1 {
+                    if runes.contains(*child) {
+                        commands
+                            .entity(rune_slot.0.0)
+                            .insert(runes.get(*child).ok().unwrap().1.rune_effect.clone());
+                        trigger_handled = true;
+                        break;
+                    }
+                }
             }
         }
+
+        if trigger_handled {
+            break;
+        } else {
+            // this means a star was activated, but the trigger wasn't handled -> machine has failed -> fire a reset event
+            info!("Star trigger not handled; resetting game");
+            machine_failed_write.write(MachineFailedEvent);
+        }
     }
+}
+
+/*
+Handles the event of the machine failing and resets everything
+*/
+fn handle_event_machine_failed(
+    // Execution condition
+    player_single: Single<Entity, (With<Player>, With<PlayerWaitingForMachine>)>,
+    // Globals
+    mut commands: Commands,
+    mut machine_failed_event_reader: EventReader<MachineFailedEvent>,
+    // Queries
+    grey_balls: Query<&GreyBall>,
+) {
+    if grey_balls.is_empty() {
+        info!("Game Over!");
+        //TODO maybe do some more than a log for game over
+    }
+
+    // TODO reset all rune slots, runes, cards, trigger stars
 }
 
 /*
@@ -1529,6 +1599,12 @@ Stores the entity-id of the rune-slot to be activated next OR the entity id of t
 struct TriggerStarActivatedEvent {
     entity_to_be_triggered: Entity,
 }
+
+/*
+Event that's fired when the machine fails to continue running
+ */
+#[derive(Event)]
+struct MachineFailedEvent;
 
 /*
 ========================================================================================

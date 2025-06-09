@@ -270,3 +270,17 @@ Querying for RuneEffect does NOT yield the runes! because - my assumption - Quer
 accessing mixed queries
 
 the variables storing the query must be marked as 'mut' if you want to access mutable results; otherhise the only way to access mutable parts is by consuming the whole query
+
+===
+
+Rune slots as data bridge
+
+coincidentally, using the rune slots and adding runes as children was a good decision that I made on a whim
+this allows me to:
+-add RuneEffects into the Runes themselves
+-use the rune slot to access the rune which is it's child and copy that rune effect
+-then use the rune slot again to access the parent (the object to be affected) and add a copy of the rune Effect as component to the parent entity
+
+this makes the whole system quite flexible and would allow for fast creation of new RuneEffects that would work without any additional work required to integrate them
+
+===

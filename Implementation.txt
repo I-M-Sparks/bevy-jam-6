@@ -83,5 +83,5 @@ Next Steps:
 -add kinematic effect for runes (aka moving things when rune-effect is activated)- - CHANGED, not using physics for animation, doing custom effect animation instad
 -disable player input while machine is running - DONE
 --& re-enable it when machine has stopped running - TODO
--add success/failure condition to machine - TODO
--add win/lose contidtion (not quite the same as success/failure: success = win, but failure != lose, since player has multiple attempts) - TODO
+-add success/failure condition to machine - DONE
+-add win/lose contidtion (not quite the same as success/failure: success = win, but failure != lose, since player has multiple attempts) - DONE
