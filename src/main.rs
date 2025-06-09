@@ -1181,7 +1181,7 @@ Handles whichever action caused a Pick-Event
  */
 fn handle_event_pick(
     //excution conditions
-    player_single: Single<Entity, With<PlayerAttemptsPick>>,
+    player_single: Single<Entity, (With<PlayerAttemptsPick>, Without<PlayerGameOver>)>,
     //Globals
     mut commands: Commands,
     images: Res<Assets<Image>>,
