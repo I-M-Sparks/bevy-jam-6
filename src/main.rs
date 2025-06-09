@@ -163,7 +163,7 @@ fn setup_mvp_scene(
             rune_default_position.y,
             render_layer,
         ),
-        Sprite::from_image(asset_server.load("Ui Pack/PNG/Blue/Double/arrow_decorative_n.png")),
+        Sprite::from_image(asset_server.load("UI Pack/PNG/Blue/Double/arrow_decorative_n.png")),
         RenderLayer { render_layer },
     ));
 
@@ -205,7 +205,7 @@ fn setup_mvp_scene(
             rune_default_position.y,
             render_layer,
         ),
-        Sprite::from_image(asset_server.load("Ui Pack/PNG/Blue/Double/arrow_decorative_e.png")),
+        Sprite::from_image(asset_server.load("UI Pack/PNG/Blue/Double/arrow_decorative_e.png")),
         RenderLayer { render_layer },
     ));
 
