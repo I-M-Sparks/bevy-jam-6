@@ -5,7 +5,7 @@ fn main() {
     App::new()
         // DEfault Plugin
         .add_plugins(DefaultPlugins.set(LogPlugin {
-            filter: "error,bevy_jam_6=trace".to_string(),
+            filter: "error,bevy_jam_6=warn".to_string(),
             level: Level::TRACE,
             ..Default::default()
         }))
