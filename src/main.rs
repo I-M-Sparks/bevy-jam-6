@@ -49,6 +49,8 @@ fn main() {
         .add_event::<ReleaseEvent>()
         .add_event::<TriggerStarActivatedEvent>()
         .add_event::<MachineFailedEvent>()
+        // Ressources
+        .insert_resource(ClearColor(Color::srgb(0.4, 0.4, 0.6)))
         // Run
         .run();
 }
@@ -603,14 +605,26 @@ fn setup_mvp_scene(
     spawn connectors
     =========================================================================================================
      */
-    let mut connector_sprite = Sprite::from_color(MAGICAL_BLUE, Vec2::new(880.0, 10.0));
+    let mut connector_sprite = Sprite::from_color(MAGICAL_BLUE, Vec2::new(900.0, 10.0));
     commands.spawn((
-        Transform::from_xyz(-120.0, 320.0, BACKGROUND_RENDER_LAYER),
+        Transform::from_xyz(-110.0, 320.0, BACKGROUND_RENDER_LAYER),
         connector_sprite.clone(),
     ));
     connector_sprite.custom_size = Some(Vec2::new(10.0, 380.0));
     commands.spawn((
         Transform::from_xyz(-555.0, 130.0, BACKGROUND_RENDER_LAYER),
+        connector_sprite.clone(),
+    ));
+
+    connector_sprite.custom_size = Some(Vec2::new(230.0, 10.0));
+    commands.spawn((
+        Transform::from_xyz(-115.0, -120.0, BACKGROUND_RENDER_LAYER),
+        connector_sprite.clone(),
+    ));
+
+    connector_sprite.custom_size = Some(Vec2::new(10.0, 100.0));
+    commands.spawn((
+        Transform::from_xyz(0.0, -165.0, BACKGROUND_RENDER_LAYER),
         connector_sprite.clone(),
     ));
 
