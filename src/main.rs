@@ -1,7 +1,7 @@
 use avian2d::prelude::*;
 use bevy::{
     ecs::{
-        hierarchy,
+        event, hierarchy,
         system::command::{self, trigger},
     },
     log::*,
@@ -45,6 +45,7 @@ fn main() {
                 handle_collision_rune_with_rune_slot,
                 handle_collision_blue_ball_and_runes,
                 handle_collision_rune_effect_with_trigger_star,
+                handle_collision_blue_ball_with_trigger_star,
             ),
         )
         // Input forwarding
@@ -131,7 +132,7 @@ fn setup_mvp_scene(
 
     let mut rune_default_position;
 
-    rune_default_position = Vec2::new(-595.0, -290.0);
+    rune_default_position = Vec2::new(-530.0, -290.0);
 
     //spawn upward movement rune
     commands.spawn((
@@ -140,7 +141,7 @@ fn setup_mvp_scene(
             affected_entity: None,
             rune_effect: RuneEffect {
                 rune_effect_type: RuneEffectType::MoveUp,
-                rune_effect_move_speed: Some(Vec2::new(0.0, 100.0)),
+                rune_effect_move_speed: Some(Vec2::new(0.0, 200.0)),
             },
         },
         Pickable,
@@ -173,7 +174,7 @@ fn setup_mvp_scene(
     ));
 
     render_layer = RUNE_RENDER_LAYER;
-    rune_default_position = Vec2::new(-535.0, -290.0);
+    rune_default_position = Vec2::new(-380.0, -290.0);
 
     //spawn right movement rune
     commands.spawn((
@@ -182,7 +183,7 @@ fn setup_mvp_scene(
             affected_entity: None,
             rune_effect: RuneEffect {
                 rune_effect_type: RuneEffectType::MoveRight,
-                rune_effect_move_speed: Some(Vec2::new(100.0, 0.0)),
+                rune_effect_move_speed: Some(Vec2::new(200.0, 0.0)),
             },
         },
         Pickable,
@@ -243,30 +244,27 @@ fn setup_mvp_scene(
 
     /*
     =========================================================================================================
-    Spawn starter-balls
+    Spawn grey balls
     =========================================================================================================
      */
 
-    // Blue ball
-    let blue_ball_sprite =
-        Sprite::from_image(asset_server.load("Puzzle Assets/PNG/Double/ballBlue.png"));
+    let grey_ball_sprite =
+        Sprite::from_image(asset_server.load("Puzzle Assets/PNG/Double/ballGrey.png"));
 
-    let blue_ball_default_position = Vec2::new(300.0, -296.0);
+    let mut grey_ball_default_position = Vec2::new(300.0, -296.0);
 
     render_layer = BALL_RENDER_LAYER;
 
-    let blue_ball_transform = Transform::from_xyz(
-        blue_ball_default_position.x,
-        blue_ball_default_position.y,
-        render_layer,
-    );
-
     commands.spawn((
-        BlueBall {
-            default_position: blue_ball_default_position.clone(),
+        GreyBall {
+            default_position: grey_ball_default_position.clone(),
         },
-        blue_ball_sprite,
-        blue_ball_transform,
+        grey_ball_sprite.clone(),
+        Transform::from_xyz(
+            grey_ball_default_position.x,
+            grey_ball_default_position.y,
+            render_layer,
+        ),
         RenderLayer {
             render_layer: render_layer,
         },
@@ -278,11 +276,7 @@ fn setup_mvp_scene(
         RigidBody::Kinematic,
     ));
 
-    // Grey balls
-    let grey_ball_sprite =
-        Sprite::from_image(asset_server.load("Puzzle Assets/PNG/Double/ballGrey.png"));
-
-    let mut grey_ball_default_position = Vec2::new(350.0, -296.0);
+    grey_ball_default_position = Vec2::new(350.0, -296.0);
 
     commands.spawn((
         GreyBall {
@@ -297,6 +291,11 @@ fn setup_mvp_scene(
             grey_ball_default_position.y,
             render_layer,
         ),
+        Pickable,
+        AddCollider {
+            collider_scale: 1.0,
+            collider_type: ColliderType::Circle,
+        },
         RigidBody::Kinematic,
     ));
 
@@ -313,6 +312,10 @@ fn setup_mvp_scene(
             render_layer,
         ),
         Pickable,
+        AddCollider {
+            collider_scale: 1.0,
+            collider_type: ColliderType::Circle,
+        },
         RigidBody::Kinematic,
     ));
 
@@ -330,7 +333,7 @@ fn setup_mvp_scene(
         .spawn((
             BallFiringThingy {
                 // speed is units per second; see addition of physics plugin to determine how much that is in pixels
-                firing_direction: Vec2::new(-100.0, 0.0),
+                firing_direction: Vec2::new(-200.0, 0.0),
             },
             ball_firing_thingy_sprite,
             ball_firing_thingy_transform,
@@ -338,7 +341,7 @@ fn setup_mvp_scene(
                 render_layer: render_layer,
             },
             AddCollider {
-                collider_scale: 0.3,
+                collider_scale: 0.4,
                 collider_type: ColliderType::Circle,
             },
         ))
@@ -366,7 +369,7 @@ fn setup_mvp_scene(
 
     render_layer = DONUT_CIRCLE_RENDER_LAYER;
 
-    let magic_cirlce_entity = commands
+    let magic_circle_entity = commands
         .spawn((
             DonutCircle,
             Transform::from_xyz(0.0, -280.0, render_layer),
@@ -445,6 +448,7 @@ fn setup_mvp_scene(
     commands
         .spawn((
             Card,
+            MachinePart,
             Transform::from_xyz(350.0, -100.0, render_layer),
             RenderLayer {
                 render_layer: render_layer,
@@ -485,6 +489,8 @@ fn setup_mvp_scene(
     commands
         .spawn((
             letter_sprite,
+            Letter,
+            MachinePart,
             RenderLayer { render_layer },
             Transform::from_xyz(-500.0, -50.0, render_layer),
             AddCollider {
@@ -501,6 +507,7 @@ fn setup_mvp_scene(
 
     commands.spawn((
         letter_sprite,
+        Letter,
         RenderLayer { render_layer },
         Transform::from_xyz(-200.0, -50.0, render_layer),
     ));
@@ -512,6 +519,7 @@ fn setup_mvp_scene(
 
     commands.spawn((
         letter_sprite,
+        Letter,
         RenderLayer { render_layer },
         Transform::from_xyz(-90.0, -50.0, render_layer),
     ));
@@ -523,6 +531,7 @@ fn setup_mvp_scene(
 
     commands.spawn((
         letter_sprite,
+        Letter,
         RenderLayer { render_layer },
         Transform::from_xyz(20.0, -50.0, render_layer),
     ));
@@ -534,6 +543,7 @@ fn setup_mvp_scene(
 
     commands.spawn((
         letter_sprite,
+        Letter,
         RenderLayer { render_layer },
         Transform::from_xyz(130.0, -50.0, render_layer),
     ));
@@ -549,8 +559,8 @@ fn setup_mvp_scene(
 
     // spawn star for cards
     commands.spawn((
-        TriggerStar {
-            follow_up_entity: letter_rune_slot_entity,
+        StarTrigger {
+            follow_up_entity: Some(letter_rune_slot_entity),
         },
         Transform::from_xyz(350.0, 320.0, render_layer),
         RenderLayer {
@@ -565,8 +575,8 @@ fn setup_mvp_scene(
 
     // spawn star for letters
     commands.spawn((
-        TriggerStar {
-            follow_up_entity: magic_cirlce_entity,
+        StarTrigger {
+            follow_up_entity: Some(magic_circle_entity),
         },
         Transform::from_xyz(-230.0, -120.0, render_layer),
         RenderLayer {
@@ -579,7 +589,23 @@ fn setup_mvp_scene(
         trigger_star_sprite.clone(),
     ));
 
-    info!("Setup completed");
+    // spawn star to stop card
+    commands.spawn((
+        StarTrigger {
+            follow_up_entity: None,
+        },
+        Transform::from_xyz(530.0, 0.0, render_layer),
+        RenderLayer {
+            render_layer: render_layer,
+        },
+        AddCollider {
+            collider_scale: 1.0,
+            collider_type: ColliderType::Rectangle,
+        },
+        trigger_star_sprite.clone(),
+    ));
+
+    info!("Game Start");
 }
 
 /*
@@ -639,8 +665,14 @@ Handle Collisions between the blue ball and the ball firing thingy (or thingies,
 */
 fn handle_collision_ball_with_ball_firing_thingy(
     // Execution condition
-    blue_ball: Single<
-        (Entity, &BlueBall, &mut Transform, &mut LinearVelocity),
+    placed_ball: Single<
+        (
+            Entity,
+            &GreyBall,
+            &mut Transform,
+            &mut LinearVelocity,
+            &mut Sprite,
+        ),
         (With<Placed>, Without<Player>),
     >,
     player: Single<(Entity, &Player)>,
@@ -656,14 +688,19 @@ fn handle_collision_ball_with_ball_firing_thingy(
 ) {
     trace!("Handling potential collision between blue ball and ball firing thingy");
 
-    let (blue_ball_entity, blue_ball, mut blue_ball_transform, mut blue_ball_velocity) =
-        blue_ball.into_inner();
+    let (
+        placed_ball_entity,
+        placed_ball,
+        mut placed_ball_transform,
+        mut placed_ball_velocity,
+        mut placed_ball_sprite,
+    ) = placed_ball.into_inner();
 
     // remove placed immediately, regardless of actual collision
-    commands.entity(blue_ball_entity).remove::<Placed>();
+    commands.entity(placed_ball_entity).remove::<Placed>();
 
-    blue_ball_transform.translation.x = blue_ball.default_position.x;
-    blue_ball_transform.translation.y = blue_ball.default_position.y;
+    placed_ball_transform.translation.x = placed_ball.default_position.x;
+    placed_ball_transform.translation.y = placed_ball.default_position.y;
 
     for contact_pair in collisions.iter() {
         /*
@@ -672,13 +709,18 @@ fn handle_collision_ball_with_ball_firing_thingy(
                 AND one of the two is in the query (the other one, but that doesn't matter yet)
                 -> move blue ball to ball_firing_thingy detected
         */
-        if (contact_pair.collider1.eq(&blue_ball_entity)
-            || contact_pair.collider2.eq(&blue_ball_entity))
+        if (contact_pair.collider1.eq(&placed_ball_entity)
+            || contact_pair.collider2.eq(&placed_ball_entity))
             && (ball_firing_thingies.contains(contact_pair.collider1)
                 || ball_firing_thingies.contains(contact_pair.collider2))
         {
             // ball and ball firing thingy
             trace!("Ball placed in firing thingy");
+
+            // turn grey ball into blue ball
+            commands.entity(placed_ball_entity).insert(BlueBall);
+            // I'll just tint the sprite instead of replacing it...
+            placed_ball_sprite.color = MAGICAL_BLUE;
 
             //mark player as wiating for machine
             commands.entity(player.0).insert(PlayerWaitingForMachine);
@@ -687,10 +729,10 @@ fn handle_collision_ball_with_ball_firing_thingy(
             let entity_ball_firing_thingy: Entity;
 
             // place ball at the transform of firing thingy
-            if contact_pair.collider1.eq(&blue_ball_entity) {
+            if contact_pair.collider1.eq(&placed_ball_entity) {
                 entity_ball_firing_thingy = contact_pair.collider2;
             } else
-            // colliders2 is blue ball
+            // colliders2 is placed ball
             {
                 entity_ball_firing_thingy = contact_pair.collider1;
             }
@@ -702,20 +744,20 @@ fn handle_collision_ball_with_ball_firing_thingy(
                 .1;
 
             // place ball in firign thingy
-            blue_ball_transform.translation.x = ball_firing_thingy_transform.translation.x;
-            blue_ball_transform.translation.y = ball_firing_thingy_transform.translation.y;
+            placed_ball_transform.translation.x = ball_firing_thingy_transform.translation.x;
+            placed_ball_transform.translation.y = ball_firing_thingy_transform.translation.y;
 
             // fire ball in direction of firing thingy
             // TODO consider rotation of ball firing_thingy (from Transform-component)
-            blue_ball_velocity.0 = ball_firing_thingies
+            placed_ball_velocity.0 = ball_firing_thingies
                 .get(entity_ball_firing_thingy)
                 .ok()
                 .unwrap()
                 .0
                 .firing_direction;
 
-            // blue ball can no longer be picked -> remove Pickable component
-            commands.entity(blue_ball_entity).remove::<Pickable>();
+            // placed ball can no longer be picked -> remove Pickable component
+            commands.entity(placed_ball_entity).remove::<Pickable>();
 
             // relevant collision was detected & handled -> interrupt the loop
             break;
@@ -900,11 +942,12 @@ fn handle_collision_rune_effect_with_trigger_star(
     // Globals
     mut commands: Commands,
     mut trigger_event_writer: EventWriter<TriggerStarActivatedEvent>,
+    mut machine_failed_event_writer: EventWriter<MachineFailedEvent>,
     //Collisions
     collisions: Collisions,
     // Queries
     trigger_stars: Query<
-        (Entity, &TriggerStar, &mut Sprite),
+        (Entity, &StarTrigger, &mut Sprite),
         (
             Without<Player>,
             Without<RuneEffect>,
@@ -916,7 +959,7 @@ fn handle_collision_rune_effect_with_trigger_star(
         (Entity, &RuneEffect),
         (
             Without<Player>,
-            Without<TriggerStar>,
+            Without<StarTrigger>,
             Without<RuneSlot>,
             Without<Rune>,
         ),
@@ -925,7 +968,7 @@ fn handle_collision_rune_effect_with_trigger_star(
         (&RuneSlot, &ChildOf, &Children),
         (
             Without<Player>,
-            Without<TriggerStar>,
+            Without<StarTrigger>,
             Without<RuneEffect>,
             Without<Rune>,
         ),
@@ -934,7 +977,7 @@ fn handle_collision_rune_effect_with_trigger_star(
         (&Rune, &mut Sprite),
         (
             Without<Player>,
-            Without<TriggerStar>,
+            Without<StarTrigger>,
             Without<RuneEffect>,
             Without<RuneSlot>,
         ),
@@ -990,9 +1033,14 @@ fn handle_collision_rune_effect_with_trigger_star(
         trigger_star.2.color = MAGICAL_BLUE;
 
         // trigger follow up mechanic
-        trigger_event_writer.write(TriggerStarActivatedEvent {
-            entity_to_be_triggered: trigger_star.1.follow_up_entity,
-        });
+        if let Some(follow_up_entity) = trigger_star.1.follow_up_entity {
+            trigger_event_writer.write(TriggerStarActivatedEvent {
+                entity_to_be_triggered: follow_up_entity,
+            });
+        } else {
+            // no follow up entity set -> reset the machine
+            machine_failed_event_writer.write(MachineFailedEvent);
+        }
     }
 
     // handle deactivation of affected entity
@@ -1014,6 +1062,32 @@ fn handle_collision_rune_effect_with_trigger_star(
                 }
                 break;
             }
+        }
+    }
+}
+
+/* Handles the event when a blue ball hits a trigger star directly - meaning no rune was ever hit and the machine has failed (without running) */
+fn handle_collision_blue_ball_with_trigger_star(
+    // Execution Condition
+    _player: Single<&Player, With<PlayerWaitingForMachine>>,
+    blue_ball: Single<Entity, With<BlueBall>>,
+    // Globals
+    mut commands: Commands,
+    mut machine_failed_writer: EventWriter<MachineFailedEvent>,
+    //Collisions
+    collisions: Collisions,
+    // Queries
+    star_triggers: Query<Entity, With<StarTrigger>>,
+) {
+    for contact_pair in collisions.iter() {
+        if (blue_ball.entity().eq(&contact_pair.collider1)
+            || blue_ball.entity().eq(&contact_pair.collider2))
+            && (star_triggers.contains(contact_pair.collider1)
+                || star_triggers.contains(contact_pair.collider2))
+        {
+            commands.entity(blue_ball.entity()).despawn();
+            machine_failed_writer.write(MachineFailedEvent);
+            break;
         }
     }
 }
@@ -1205,8 +1279,7 @@ fn handle_event_release(
 
 fn controls(
     // Execution conditions
-    player_single: Single<Entity, With<Player>>,
-    _blue_ball: Single<&BlueBall, With<Pickable>>,
+    player_single: Single<Entity, (With<Player>, Without<PlayerWaitingForMachine>)>,
     //Globals
     mut commands: Commands,
     input: Res<ButtonInput<MouseButton>>,
@@ -1372,8 +1445,10 @@ fn handle_event_trigger_star_activated(
             ));
 
             info!("Congratulations!");
-            // game is completed - ignore any other events
-            trigger_handled = true; // <-- this should not have any effect, since we hit break after this. but hey, better safe than sorry
+            commands
+                .entity(player_single.entity())
+                .insert(PlayerGameOver);
+            // game is completed
             break;
         }
 
@@ -1397,7 +1472,7 @@ fn handle_event_trigger_star_activated(
             break;
         } else {
             // this means a star was activated, but the trigger wasn't handled -> machine has failed -> fire a reset event
-            info!("Star trigger not handled; resetting game");
+            info!("Rune-Goldberg-Donut-Machine has failed, resetting game");
             machine_failed_write.write(MachineFailedEvent);
         }
     }
@@ -1414,13 +1489,75 @@ fn handle_event_machine_failed(
     mut machine_failed_event_reader: EventReader<MachineFailedEvent>,
     // Queries
     grey_balls: Query<&GreyBall>,
+    mut runes: Query<
+        (
+            &mut Rune,
+            &mut Sprite,
+            &mut Transform,
+            &RenderLayer,
+            &ChildOf,
+            Entity,
+        ),
+        (Without<StarTrigger>, Without<Card>, Without<Letter>),
+    >,
+    mut card: Single<
+        (&mut Transform, &RenderLayer),
+        (
+            With<Card>,
+            With<MachinePart>,
+            Without<Rune>,
+            Without<Letter>,
+        ),
+    >,
+    mut letter: Single<
+        (&mut Transform, &RenderLayer),
+        (
+            With<Letter>,
+            With<MachinePart>,
+            Without<Rune>,
+            Without<Card>,
+        ),
+    >,
+    mut trigger_stars: Query<&mut Sprite, With<StarTrigger>>,
 ) {
-    if grey_balls.is_empty() {
-        info!("Game Over!");
-        //TODO maybe do some more than a log for game over
-    }
+    for _machine_failed_event in machine_failed_event_reader.read() {
+        commands
+            .entity(player_single.entity())
+            .remove::<PlayerWaitingForMachine>();
 
-    // TODO reset all rune slots, runes, cards, trigger stars
+        if grey_balls.is_empty() {
+            info!("Game Over!");
+            commands
+                .entity(player_single.entity())
+                .insert(PlayerGameOver);
+            //TODO maybe do some more than a log for game over
+        }
+
+        // reset all rune slots, runes, cards, trigger stars
+        //note: this could & should be done ina  much more generic way, but especially during this GameJam I don't have the time for fancy things like thinking before acting xP
+
+        // reset runes by restoring normal color and placing them in their default position
+        for mut rune in &mut runes {
+            rune.0.affected_entity = None;
+            rune.1.color = Color::WHITE;
+            rune.2.translation.x = rune.0.default_position.x;
+            rune.2.translation.y = rune.0.default_position.y;
+            rune.2.translation.z = rune.3.render_layer;
+            rune.2.scale = Vec3::ONE;
+
+            commands.entity(rune.4.parent()).remove_children(&[rune.5]);
+
+            trace!("rune reset to {:?}", rune.2.translation);
+        }
+
+        // copied start translations from setup function
+        letter.0.translation = Vec3::new(-500.0, -50.0, letter.1.render_layer);
+        card.0.translation = Vec3::new(350.0, -100.0, card.1.render_layer);
+
+        for mut trigger_star in &mut trigger_stars {
+            trigger_star.color = Color::WHITE;
+        }
+    }
 }
 
 /*
@@ -1525,16 +1662,28 @@ marks that the player is attempting a release
 #[derive(Component)]
 struct PlayerAttemptsRelease;
 
+/*
+Game over marker
+ */
+#[derive(Component)]
+struct PlayerGameOver;
+
+/*
+Marker for Cards
+ */
 #[derive(Component)]
 struct Card;
+/*
+Marker for Letters
+ */
+#[derive(Component)]
+struct Letter;
 
 #[derive(Component)]
 struct DonutCircle;
 
 #[derive(Component)]
-struct BlueBall {
-    default_position: Vec2,
-}
+struct BlueBall;
 
 #[derive(Component)]
 struct GreyBall {
@@ -1568,9 +1717,15 @@ struct AddCollider {
 Store which entity to trigger when the star is activated
  */
 #[derive(Component)]
-struct TriggerStar {
-    follow_up_entity: Entity,
+struct StarTrigger {
+    follow_up_entity: Option<Entity>,
 }
+
+/*
+Marker for entities that are affected by runes
+ */
+#[derive(Component)]
+struct MachinePart;
 
 /*
 ========================================================================================

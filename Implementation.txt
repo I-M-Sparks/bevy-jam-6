@@ -82,6 +82,19 @@ Next Steps:
 -add collision-handling for blue_ball and runes- DONE
 -add kinematic effect for runes (aka moving things when rune-effect is activated)- - CHANGED, not using physics for animation, doing custom effect animation instad
 -disable player input while machine is running - DONE
---& re-enable it when machine has stopped running - TODO
+--& re-enable it when machine has stopped running - MOVED
 -add success/failure condition to machine - DONE
 -add win/lose contidtion (not quite the same as success/failure: success = win, but failure != lose, since player has multiple attempts) - DONE
+
+===
+
+Next Steps:
+-reset the game when machine fails - BUGGY
+-change GreyBalls so they are all identical at the start and turn into BlueBalls when launched - DONE
+-prevent inifnite movement of ball/machine parts (should tirgger machine failure instead) - DONE
+
+Bugs:
+-runes are not reset properly - FIXED
+-one of the grey balls can't be picked up for some reason
+
+===
